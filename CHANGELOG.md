@@ -114,7 +114,9 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   apart compare without differences: interrupt counts, CPU clock readings, the `/proc/meminfo`
   usage counters, CPUID leaf 1 EBX (it carries the APIC id of the CPU that ran the read), PCI power
   state and status register, neighbour tables, kernel module reference counts, the boot id, IMA's
-  measurement count, Defender signature ages and scan times, and page file usage.
+  measurement count, Defender signature ages and scan times, page file usage, a Windows service's
+  run state and process id (its start mode still counts), the licensing trusted time, and the CPU
+  registry value `Patch Configuration Used`.
 
 ### Changed
 

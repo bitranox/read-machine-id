@@ -66,6 +66,27 @@ def _status(path: str, a: JsonObject, b: JsonObject) -> FieldStatus:
             {"memory": {"page_file_usage": [{"CurrentUsage": 10}]}},
             {"memory": {"page_file_usage": [{"CurrentUsage": 90}]}},
         ),
+        # The four below changed between two Windows readings taken minutes apart on an idle VM.
+        (
+            "services.all[1].ProcessId",
+            {"services": {"all": [{}, {"ProcessId": 7232}]}},
+            {"services": {"all": [{}, {"ProcessId": 7512}]}},
+        ),
+        (
+            "services.all[0].State",
+            {"services": {"all": [{"State": "Running"}]}},
+            {"services": {"all": [{"State": "Stopped"}]}},
+        ),
+        (
+            "windows.licensing_products[0].TrustedTime",
+            {"windows": {"licensing_products": [{"TrustedTime": "20261127201319.440000-000"}]}},
+            {"windows": {"licensing_products": [{"TrustedTime": "20261127201650.512000-000"}]}},
+        ),
+        (
+            "cpu.cpus[0].registry.Patch Configuration Used",
+            {"cpu": {"cpus": [{"registry": {"Patch Configuration Used": 641478656}}]}},
+            {"cpu": {"cpus": [{"registry": {"Patch Configuration Used": 2082624000}}]}},
+        ),
     ],
 )
 def test_a_counter_that_moves_between_reads_is_volatile(path: str, a: JsonObject, b: JsonObject) -> None:
@@ -78,6 +99,15 @@ def test_the_stable_parts_next_to_a_counter_stay_scored() -> None:
     b: JsonObject = {"memory": {"meminfo": {"MemTotal": 16}}, "cpuid": {"raw": {"0x00000001:0": {"eax": "0x906a4"}}}}
     assert _status("memory.meminfo.MemTotal", a, b) is FieldStatus.DIFF
     assert _status("cpuid.raw.0x00000001:0.eax", a, b) is FieldStatus.DIFF
+
+
+@pytest.mark.os_agnostic
+def test_a_service_s_configuration_and_a_state_elsewhere_stay_scored() -> None:
+    """Only a service's run state is volatile: its start mode, and a State field elsewhere, still count."""
+    a: JsonObject = {"services": {"all": [{"StartMode": "Auto"}]}, "security": {"tpm": [{"State": "Ready"}]}}
+    b: JsonObject = {"services": {"all": [{"StartMode": "Manual"}]}, "security": {"tpm": [{"State": "Off"}]}}
+    assert _status("services.all[0].StartMode", a, b) is FieldStatus.DIFF
+    assert _status("security.tpm[0].State", a, b) is FieldStatus.DIFF
 
 
 @pytest.mark.os_agnostic

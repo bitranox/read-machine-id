@@ -90,6 +90,16 @@ VOLATILE_PREFIXES = (
     "network.tables.neighbours",
     "devices.modules[].refcount",
     "security.ima.runtime_measurements_count",
+    # A service's run state, not its configuration: trigger-start services start and stop on an
+    # idle machine, and each start gets a new process id. StartMode and the rest stay scored.
+    "services.all[].ProcessId",
+    "services.all[].State",
+    "services.all[].Started",
+    "services.all[].AcceptStop",
+    "services.all[].AcceptPause",
+    "windows.licensing_products[].TrustedTime",
+    # Measured changing on every reading of one idle Windows VM; Microsoft does not document it.
+    "cpu.cpus[].registry.Patch Configuration Used",
     *(f"memory.meminfo.{name}" for name in _MEMINFO_COUNTERS),
 )
 
