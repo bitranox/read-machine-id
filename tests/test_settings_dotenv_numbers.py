@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from pydantic import SecretStr, ValidationError
+from pydantic import ValidationError
 
 from read_machine_id.adapters.logging.setup import (
     _build_runtime_config,  # pyright: ignore[reportPrivateUsage]
@@ -48,26 +48,12 @@ def test_a_digit_only_logging_name_reaches_lib_log_rich_as_its_text(
 
 
 @pytest.mark.os_agnostic
-@pytest.mark.parametrize("key", ["SMTP_PASSWORD", "SMTP_USERNAME"])
-def test_a_digit_only_smtp_credential_reaches_the_email_config_as_its_text(
-    tmp_path: Path, clear_config_cache: None, key: str
-) -> None:
-    config = _load_dotenv(tmp_path, f"EMAIL__{key}=123456")
-    assert isinstance(config.get("email", {})[key.lower()], int)
-
-    email = build_production().load_email_config_from_dict(config.as_dict())
-
-    expected = SecretStr("123456") if key == "SMTP_PASSWORD" else "123456"
-    assert getattr(email, key.lower()) == expected
-
-
-@pytest.mark.os_agnostic
 def test_a_numeric_setting_still_reads_as_a_number(tmp_path: Path, clear_config_cache: None) -> None:
-    config = _load_dotenv(tmp_path, "EMAIL__TIMEOUT=45")
+    config = _load_dotenv(tmp_path, "LIB_LOG_RICH__RING_BUFFER_SIZE=4711")
 
-    email = build_production().load_email_config_from_dict(config.as_dict())
+    runtime = _build_runtime_config(config)
 
-    assert email.smtp_timeout == 45.0
+    assert runtime.ring_buffer_size == 4711
 
 
 @pytest.mark.os_agnostic

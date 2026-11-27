@@ -84,7 +84,7 @@ def cli_config(ctx: click.Context, output_format: str, section: str | None, prof
         >>> from read_machine_id.adapters.cli.root import cli
         >>> from read_machine_id.adapters.config.display import display_config
         >>> from read_machine_id.composition import build_testing
-        >>> data = Config({"email": {"from_address": "a@example.com"}}, {})
+        >>> data = Config({"my_section": {"color": "blue"}}, {})
         >>> def services():
         ...     testing = build_testing()
         ...     return dataclasses.replace(testing, get_config=lambda **_: data, display_config=display_config)
@@ -93,8 +93,8 @@ def cli_config(ctx: click.Context, output_format: str, section: str | None, prof
         0
         >>> print(result.output.strip())
         {
-          "email": {
-            "from_address": "a@example.com"
+          "my_section": {
+            "color": "blue"
           }
         }
     """
@@ -273,9 +273,8 @@ def cli_config_deploy(
     - host: System-wide host config (requires privileges)
     - user: User-specific config (~/.config on Linux)
 
-    Every target gets config.toml plus config.d/40-layered-config.toml,
-    config.d/50-mail.toml and config.d/90-logging.toml (host: hosts/<hostname>.toml
-    plus hosts/<hostname>.d/).
+    Every target gets config.toml plus config.d/40-layered-config.toml and
+    config.d/90-logging.toml (host: hosts/<hostname>.toml plus hosts/<hostname>.d/).
 
     By default, existing files are not overwritten. With --force, a file whose
     content differs is replaced and the old one is kept as <name>.bak (numbered,
@@ -395,7 +394,7 @@ _PERMISSIONS_KEY: Final[str] = "default_permissions"
 
 #: How to deploy when the configured permission settings cannot be used. Both modes come
 #: first: --no-permissions leaves every mode to the umask, which can make a user file that
-#: holds the SMTP password readable by other accounts.
+#: holds secrets readable by other accounts.
 _DEPLOY_ANYWAY_HINT: Final[str] = (
     "Hint: to deploy anyway, pass both --dir-mode and --file-mode (the built-in modes are 700 and 600 "
     "for user, 755 and 644 for app and host); --no-permissions also deploys, but leaves every mode to "
