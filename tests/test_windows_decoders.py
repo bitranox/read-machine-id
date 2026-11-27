@@ -3,6 +3,7 @@ INQUIRY answers and NUMA nodes. Every value is invented."""
 
 from __future__ import annotations
 
+import time
 import uuid
 
 import pytest
@@ -149,3 +150,25 @@ def test_an_inquiry_answer_too_short_for_its_identity_is_refused() -> None:
 def test_a_numa_node_lists_its_processors_within_its_group() -> None:
     node = NumaNode(node=1, group=1, mask=1 << 63 | 1).as_json()
     assert node == {"node": 1, "processor_group": 1, "processor_mask": "0x8000000000000001", "processors": [0, 63]}
+
+
+# A search that may start inside a long run and rescan it to the end costs the square of the run:
+# 200,000 characters took minutes that way. Anchored, it takes milliseconds; the bound is loose
+# on purpose, since only the quadratic shape can come anywhere near it.
+_LONG_RUN = 200_000
+_LINEAR_BOUND_S = 2.0
+
+
+@pytest.mark.os_agnostic
+def test_a_long_digit_run_in_a_location_string_is_scanned_once() -> None:
+    started = time.perf_counter()
+    assert pci_location("1" * _LONG_RUN) is None
+    assert time.perf_counter() - started < _LINEAR_BOUND_S
+
+
+@pytest.mark.os_agnostic
+def test_a_long_name_without_a_value_in_an_object_path_is_scanned_once() -> None:
+    started = time.perf_counter()
+    with pytest.raises(ValueError, match="without keys"):
+        parse_wmi_reference("Win32_PnPEntity." + "a" * _LONG_RUN)
+    assert time.perf_counter() - started < _LINEAR_BOUND_S

@@ -142,6 +142,12 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   performance and efficiency cores answer some leaves differently (the L2 size in leaf
   0x80000006), so two readings of one machine could differ, depending on where the scheduler
   ran the read.
+- Linux collection reads files in 64 KiB pieces instead of asking for the whole 16 MiB size cap
+  in one read: the sections read about twice as fast (476 ms down to 253 ms on a test container).
+- `compare` and `check` refuse a reading file larger than 256 MiB as not a reading, instead of
+  reading it whole into memory (real readings are a few MB).
+- Three patterns that read Windows PCI location strings and WMI object paths scan a long input
+  once instead of retrying from every position.
 
 ## [0.1.0] - 2026-11-27
 

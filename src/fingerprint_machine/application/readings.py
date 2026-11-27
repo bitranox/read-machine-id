@@ -1,7 +1,7 @@
 """Load, save, compare and check readings.
 
 Contents:
-    * :func:`load_reading` - a reading from a JSON file.
+    * :data:`MAX_READING_BYTES`, :func:`load_reading` - a reading from a JSON file, and its cap.
     * :func:`save_json` - write any JSON document to a file, atomically.
     * :class:`ComparisonResult` - a comparison and the JSON document that reports it.
     * :func:`compare_files` - compare two saved readings.
@@ -24,22 +24,46 @@ if TYPE_CHECKING:
     from ..domain.json_types import JsonObject, JsonValue
 
 
+#: The largest file read as a reading. A real reading is a few MB; the cap keeps a wrong path
+#: (a device, ``/dev/zero``, a disk image) from being read until memory runs out.
+MAX_READING_BYTES = 256 * 1024 * 1024
+_CHUNK = 1024 * 1024
+
+
+def _read_capped(path: Path, max_bytes: int) -> bytes:
+    """Return a file's content, refusing it as soon as it passes ``max_bytes``."""
+    chunks: list[bytes] = []
+    total = 0
+    with path.open("rb") as handle:
+        while chunk := handle.read(min(_CHUNK, max_bytes + 1 - total)):
+            total += len(chunk)
+            if total > max_bytes:
+                raise ValueError(f"more than {max_bytes} bytes, too large for a reading")
+            chunks.append(chunk)
+    return b"".join(chunks)
+
+
 def _label(reading: JsonObject, fallback: str) -> str:
     meta = reading.get("meta")
     label = meta.get("label") if isinstance(meta, dict) else None
     return label if isinstance(label, str) and label else fallback
 
 
-def load_reading(path: Path) -> JsonObject:
+def load_reading(path: Path, *, max_bytes: int = MAX_READING_BYTES) -> JsonObject:
     """Return the reading saved in ``path``.
 
     A ``collect --json`` envelope is accepted too: its ``data`` is the reading.
 
+    Args:
+        path: the file to read.
+        max_bytes: the largest file accepted; a larger one is refused without being read whole.
+
     Raises:
-        NotAReadingError: the file cannot be read, is not JSON, or holds no ``meta`` object.
+        NotAReadingError: the file cannot be read, is larger than ``max_bytes``, is not UTF-8
+            JSON, or holds no ``meta`` object.
     """
     try:
-        document: object = json.loads(path.read_text(encoding="utf-8"))
+        document: object = json.loads(_read_capped(path, max_bytes).decode("utf-8"))
     except (OSError, ValueError) as exc:
         raise NotAReadingError(f"{path}: {exc}") from exc
     if isinstance(document, dict):
@@ -116,4 +140,4 @@ def check(baseline: JsonObject, fresh: JsonObject) -> ComparisonResult:
     return ComparisonResult(cmp, comparison_document(cmp, labels))
 
 
-__all__ = ["ComparisonResult", "check", "compare_files", "load_reading", "save_json"]
+__all__ = ["MAX_READING_BYTES", "ComparisonResult", "check", "compare_files", "load_reading", "save_json"]

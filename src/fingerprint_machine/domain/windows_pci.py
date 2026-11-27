@@ -51,10 +51,13 @@ _CLASS = re.compile(r"CC_([0-9A-F]{6})", re.IGNORECASE)
 #: The arguments of the registry's indirect location string: ``...;(6,18,0)``.
 _LOCATION_ARGS = re.compile(r"\((\d+),(\d+),(\d+)\)\s*$")
 #: The resolved location text, in any language: the first three numbers are bus, device, function.
-_LOCATION_TEXT = re.compile(r"(\d+)\D+(\d+)\D+(\d+)")
+#: It starts only where a number starts, so a long digit run is scanned once, not once per digit.
+_LOCATION_TEXT = re.compile(r"(?<!\d)(\d+)\D+(\d+)\D+(\d+)")
 _SERIAL_INSTANCE = re.compile(r"^([0-9A-F]{16})[0-9A-F]{2}$", re.IGNORECASE)
 _REFERENCE = re.compile(r"^(?:\\\\[^\\]*\\[^:]*:)?(?P<cls>\w+)\.(?P<keys>.*)$", re.DOTALL)
-_KEY = re.compile(r'(?P<name>\w+)=(?:"(?P<quoted>(?:[^"\\]|\\.)*)"|(?P<bare>[^,]*))', re.DOTALL)
+#: Each match starts where a name starts (the lookbehind), so a long run of word characters with
+#: no ``=`` after it is scanned once, not once per position in it.
+_KEY = re.compile(r'(?<!\w)(?P<name>\w+)=(?:"(?P<quoted>(?:[^"\\]|\\.)*)"|(?P<bare>[^,]*))', re.DOTALL)
 _ESCAPE = re.compile(r"\\(.)", re.DOTALL)
 
 #: ``CM_DEVCAP_UNIQUEID``: the device's instance id is unique across machines (its serial number).

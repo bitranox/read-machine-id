@@ -38,7 +38,9 @@ if TYPE_CHECKING:
 _PROCESSORS = r"HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor"
 _SCSI = r"HKLM\HARDWARE\DEVICEMAP\Scsi"
 _DISPLAY = r"HKLM\SYSTEM\CurrentControlSet\Enum\DISPLAY"
-_NUMBER = re.compile(r"(\d+)\s*$")
+# The lookbehind keeps search from retrying inside a run of digits not at the end: each such
+# start rescanned the run, so a long one cost the square of its length.
+_NUMBER = re.compile(r"(?<!\d)(\d+)\s*$")
 
 
 def _number(name: str) -> int | None:

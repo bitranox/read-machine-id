@@ -61,6 +61,19 @@ def test_a_file_over_the_cap_is_refused_not_read_whole(tmp_path: Path) -> None:
 
 
 @pytest.mark.os_agnostic
+def test_a_file_longer_than_one_read_comes_back_whole_and_in_order(tmp_path: Path) -> None:
+    content = bytes(range(256)) * 1000  # 256,000 bytes: several reads of any sane chunk size
+    (tmp_path / "proc").mkdir()
+    (tmp_path / "proc/long").write_bytes(content)
+    reader = FilesystemReader(tmp_path)
+    assert reader.read_bytes("/proc/long") == content
+    assert reader.read_bytes("/proc/long", max_bytes=len(content)) == content
+    with pytest.raises(SourceError, match=f"more than {len(content) - 1} bytes"):
+        reader.read_bytes("/proc/long", max_bytes=len(content) - 1)
+    assert reader.read_prefix("/proc/long", size=200_000) == content[:200_000]
+
+
+@pytest.mark.os_agnostic
 def test_a_relative_path_is_refused(tmp_path: Path) -> None:
     with pytest.raises(SourceError, match="absolute"):
         _tree(tmp_path).read_text("sys/class/net/eth0/address")
