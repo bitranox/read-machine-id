@@ -94,7 +94,7 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   SMBIOS type 17. New fields: `system.bios_vendor`, `bios_date`, `board_manufacturer`,
   `board_product`, `board_serial`, `chassis_type`, `chassis_serial`; `cpu.vendor`, `hypervisor`,
   `hypervisors`; `pci_address` and `driver` per NIC and storage controller; `controller` per disk
-  (Linux); an `os` group (name, version, hostname, machine id). The `windows` group is present on
+  (its PCI address, on Windows read from the disk's location); an `os` group (name, version, hostname, machine id). The `windows` group is present on
   Linux with every field empty. The summary lists hardware only, on both OSes: on Linux devices
   under `/sys/devices/virtual` (loopback, bridges, loop and device-mapper disks) are left out, on
   Windows adapters that are no hardware interface (tunnel and VPN adapters) and storage

@@ -16,6 +16,7 @@ Contents:
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from .identity import vmware_pvscsi_sas_wwid
@@ -49,10 +50,13 @@ from .summary_values import (
 )
 
 if TYPE_CHECKING:
-    from .json_types import JsonObject
+    from .json_types import JsonObject, JsonValue
 
 _DRIVER_SUFFIX = ".sys"
 _PCI_ENUMERATOR = "PCI\\"
+# MSFT_Disk.Location names the controller as "PCI Slot 1 : Bus 9 : Device 1 : Function 0 : Adapter 1 : ...",
+# the numbers in decimal; a disk on a non-PCI adapter ("Integrated : Adapter 0") has no bus there.
+_DISK_LOCATION = re.compile(r"\bBus (\d+) : Device (\d+) : Function (\d+)\b")
 
 
 def _system(body: JsonObject) -> SystemSummary:
@@ -147,6 +151,15 @@ def _scsi(row: JsonObject, pci: dict[str, JsonObject]) -> ScsiControllerSummary:
     )
 
 
+def _controller_address(location: JsonValue) -> str | None:
+    """The PCI address of the controller a disk hangs on, from its MSFT_Disk location."""
+    match = _DISK_LOCATION.search(text(location) or "")
+    if match is None:
+        return None
+    bus, device, function = (int(group) for group in match.groups())
+    return pci_address(segment=0, bus=bus, device=device, function=function)
+
+
 def _disks(body: JsonObject) -> tuple[DiskSummary, ...]:
     storage = {integer(r.get("Number")): r for r in rows(body, "disks", "storage")}
     out: list[DiskSummary] = []
@@ -160,6 +173,7 @@ def _disks(body: JsonObject) -> tuple[DiskSummary, ...]:
                 mbr_signature=integer(d.get("Signature")),
                 gpt_guid=canonical_uuid(msft.get("Guid")),
                 unique_id=canonical_disk_id(msft.get("UniqueId"), id_format=integer(msft.get("UniqueIdFormat"))),
+                controller=_controller_address(msft.get("Location")),
             )
         )
     return tuple(out)

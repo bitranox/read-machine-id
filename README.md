@@ -141,7 +141,8 @@ The values above are made up, and each group is shortened. The summary also has 
 `scsi_controllers`; for a VMware PVSCSI controller it works out the SAS WWID from the controller's
 PCI serial. System, BIOS, board and chassis values come from the SMBIOS table and CPU values from
 CPUID on both OSes. A value the reading does not hold is `null`: the `windows` group on Linux, the
-TPM manufacturer and VBS status on Linux, a disk's controller on Windows. The OS facts (names,
+TPM manufacturer and VBS status on Linux, a disk's controller when it hangs on no PCI
+controller. The OS facts (names,
 interface numbers, `os`) differ between the two OSes by nature.
 
 The full sections follow the summary. `--section` reads any of them alone:

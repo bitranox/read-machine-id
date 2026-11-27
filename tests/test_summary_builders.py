@@ -208,3 +208,18 @@ def test_a_windows_disk_model_is_the_inquiry_product_as_linux_reads_it() -> None
     (windows,) = summarize_windows(windows_body).disks
     (linux,) = summarize_linux({"disks": {"block_devices": [linux_disk]}}).disks
     assert windows.model == linux.model == "Example Disk"
+
+
+@pytest.mark.os_agnostic
+def test_a_windows_disk_names_its_controller_by_pci_address_as_linux_does() -> None:
+    # MSFT_Disk.Location writes the controller's bus, device and function in decimal.
+    location = "PCI Slot 1 : Bus 10 : Device 1 : Function 0 : Adapter 1 : Port 0 : Target 0 : LUN 0"
+    windows_body: JsonObject = {"disks": {
+        "wmi": [{"Index": 0}, {"Index": 1}],
+        "storage": [{"Number": 0, "Location": location}, {"Number": 1, "Location": "Integrated : Adapter 0"}],
+    }}  # fmt: skip
+    linux_disk: JsonObject = {"name": "sda", "device_path": _SCSI_PATH, "controller": "0000:0a:01.0"}
+    windows, unplaced = summarize_windows(windows_body).disks
+    (linux,) = summarize_linux({"disks": {"block_devices": [linux_disk]}}).disks
+    assert windows.controller == linux.controller == "0000:0a:01.0"
+    assert unplaced.controller is None
