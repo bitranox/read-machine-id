@@ -23,8 +23,9 @@ What it is for:
 - You keep a baseline of a machine and check later that nothing drifted.
 - You want a hardware and identity inventory from a script, as JSON rather than screen text.
 
-It works on any Windows machine, physical or virtual. Reading needs Windows; comparing two saved
-readings also works on Linux and macOS.
+It works on any Windows machine, physical or virtual. On Linux this version reads the CPU's CPUID
+leaves (the `cpuid` section); the other Linux sections are still to come. Reading needs Windows or
+Linux; comparing two saved readings also works on macOS.
 
 ---
 
@@ -54,13 +55,15 @@ reading is not affected.
 ### `collect`
 
 ```text
-fingerprint-machine collect [--section NAME ...] [--label TEXT] [--out FILE] [--json | --json-bare]
+fingerprint-machine collect [--section NAME ...] [--label TEXT] [--out FILE] [--no-cpuid] [--json | --json-bare]
 ```
 
 Reads the machine. Without options it prints a summary table. `--json` prints the whole reading
 inside an envelope, `--json-bare` prints only the reading. `--out` also saves the reading to a
 file, `--label` names it (default: the computer name), and `--section` reads only the sections you
-name, e.g. `--section network --section smbios`.
+name, e.g. `--section network --section smbios`. `--no-cpuid` leaves out the `cpuid` section and
+never runs the CPUID instruction: reading it needs a page of executable memory, which some
+endpoint security products flag.
 
 ### `compare`
 
@@ -82,11 +85,11 @@ reading and `--out` keeps the comparison. Exits 1 when anything differs.
 
 ### Exit codes and JSON
 
-| Exit code | Meaning                                                                    |
-|-----------|----------------------------------------------------------------------------|
-| 0         | done; for `compare` and `check`, no differences                            |
-| 1         | `compare` or `check` found differences                                     |
-| 2         | refused: not Windows (`collect`, `check`), or a file that is not a reading |
+| Exit code | Meaning                                                                                  |
+|-----------|------------------------------------------------------------------------------------------|
+| 0         | done; for `compare` and `check`, no differences                                          |
+| 1         | `compare` or `check` found differences                                                   |
+| 2         | refused: neither Windows nor Linux (`collect`, `check`), or a file that is not a reading |
 
 `--json` wraps the result as `{"ok": true, "command": ..., "data": ..., "skipped": [...]}`.
 `skipped` lists each question a source could not answer, with the reason, for example a WMI class
@@ -98,7 +101,7 @@ Warnings go to standard error, so standard output can go straight into `jq` or a
 
 ## What a reading holds
 
-A reading starts with `meta` (tool version, schema version, time, label) and a `summary` of the
+A reading starts with `meta` (tool version, schema version, OS, time, label) and a `summary` of the
 values people look for most:
 
 ```json
@@ -143,20 +146,21 @@ controller's PCI serial.
 
 The full sections follow the summary. `--section` reads any of them alone:
 
-| Section    | What it holds                                                                                                                                       |
-|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `smbios`   | The raw SMBIOS table with every structure; BIOS, system, board, chassis, CPU, slots, memory, OEM strings and onboard devices decoded field by field |
-| `acpi`     | ACPI table headers (OEM ids), and whether an MSDM table holds a product key                                                                         |
-| `platform` | BIOS, computer system (domain or workgroup included), product, baseboard and enclosure from WMI, and the BIOS and system values in the registry     |
-| `cpu`      | Processors and caches                                                                                                                               |
-| `memory`   | Memory modules and arrays                                                                                                                           |
-| `disks`    | Disks, physical disks, partitions and volumes with their serials and GUIDs, and SAS or Fibre Channel initiator ports                                |
-| `network`  | Per adapter: PCI location, every advanced driver setting, offloads, RSS, power management, bindings, the network class key, addresses, routes, DNS  |
-| `hardware` | SCSI, IDE and USB controllers, CD drives, keyboards, mice, sound, monitors, serial ports, video                                                     |
-| `devices`  | Every device instance under the registry's `Enum` key, present or not, with hardware ids, location and driver                                       |
-| `windows`  | Operating system, the `CurrentVersion` key, device id, MachineGuid, machine SID, TCP/IP names, time zone, licensing, hotfixes, cloud join           |
-| `security` | TPM (WMI and TBS), cached EK certificates (public fields only), Secure Boot, Device Guard and VBS, BitLocker status                                 |
-| `services` | Every service with its state and start mode                                                                                                         |
+| Section    | What it holds                                                                                                                                                                                         |
+|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `smbios`   | The raw SMBIOS table with every structure; BIOS, system, board, chassis, CPU, slots, memory, OEM strings and onboard devices decoded field by field                                                   |
+| `acpi`     | ACPI table headers (OEM ids), and whether an MSDM table holds a product key                                                                                                                           |
+| `platform` | BIOS, computer system (domain or workgroup included), product, baseboard and enclosure from WMI, and the BIOS and system values in the registry                                                       |
+| `cpu`      | Processors and caches                                                                                                                                                                                 |
+| `cpuid`    | The CPU's CPUID leaves (Windows and Linux): vendor, family, model, stepping, brand, feature flags, every hypervisor signature (`0x40000000` and the later bases), and each leaf read as raw registers |
+| `memory`   | Memory modules and arrays                                                                                                                                                                             |
+| `disks`    | Disks, physical disks, partitions and volumes with their serials and GUIDs, and SAS or Fibre Channel initiator ports                                                                                  |
+| `network`  | Per adapter: PCI location, every advanced driver setting, offloads, RSS, power management, bindings, the network class key, addresses, routes, DNS                                                    |
+| `hardware` | SCSI, IDE and USB controllers, CD drives, keyboards, mice, sound, monitors, serial ports, video                                                                                                       |
+| `devices`  | Every device instance under the registry's `Enum` key, present or not, with hardware ids, location and driver                                                                                         |
+| `windows`  | Operating system, the `CurrentVersion` key, device id, MachineGuid, machine SID, TCP/IP names, time zone, licensing, hotfixes, cloud join                                                             |
+| `security` | TPM (WMI and TBS), cached EK certificates (public fields only), Secure Boot, Device Guard and VBS, BitLocker status                                                                                   |
+| `services` | Every service with its state and start mode                                                                                                                                                           |
 
 A question that cannot be answered (a missing WMI class, access denied) is recorded as
 `{"error": "..."}` in its place and listed under `skipped`, and the reading goes on.

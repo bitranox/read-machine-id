@@ -16,7 +16,7 @@ from lib_registry import Registry
 from fingerprint_machine.adapters.fixture import FixtureSources
 from fingerprint_machine.adapters.windows.registry import LibRegistrySource
 from fingerprint_machine.application.collect import Section, read_section
-from fingerprint_machine.application.machine_ports import Sources
+from fingerprint_machine.application.machine_ports import WindowsSources
 from fingerprint_machine.domain.machine_errors import MissingKeyError
 
 if TYPE_CHECKING:
@@ -56,7 +56,9 @@ def test_a_missing_key_is_reported_as_missing(method: str) -> None:
 def test_the_windows_section_reads_through_lib_registry() -> None:
     # fake_winreg's default registry carries a CurrentVersion key, as a real Windows does.
     nothing = FixtureSources({})
-    section = read_section(Sources(platform=nothing, registry=LibRegistrySource()), Section.WINDOWS)
+    section = read_section(
+        WindowsSources(platform=nothing, registry=LibRegistrySource(), cpuid=nothing), Section.WINDOWS
+    )
     assert isinstance(section, dict)
     current = section["current_version"]
     assert isinstance(current, dict)

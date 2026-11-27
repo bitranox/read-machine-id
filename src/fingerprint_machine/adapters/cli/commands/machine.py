@@ -6,11 +6,13 @@ Contents:
     * :data:`cli_check` - compare a saved baseline with this machine.
 
 Exit codes (see :class:`~..machine_output.MachineExit`): 0 done, 1 ``check`` or ``compare``
-found differences, 2 refused (not Windows, a file that is not a reading, an unwritable output).
+found differences, 2 refused (neither Windows nor Linux, a file that is not a reading, an
+unwritable output).
 """
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import platform
 from pathlib import Path
@@ -20,7 +22,8 @@ import rich_click as click
 
 from fingerprint_machine import __init__conf__
 
-from ....application.collect import Section, collect
+from ....adapters.cpuid import CpuidOff
+from ....application.collect import Section, collect, default_sections
 from ....application.readings import check, compare_files, load_reading, save_json
 from ....domain.machine_errors import NotAReadingError, UnsupportedPlatformError
 from ..constants import CLICK_CONTEXT_SETTINGS
@@ -65,14 +68,19 @@ def _now() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 
 
-def _read_machine(ctx: click.Context, label: str | None, sections: tuple[str, ...]) -> JsonObject:
+def _read_machine(ctx: click.Context, label: str | None, sections: tuple[str, ...], *, cpuid: bool) -> JsonObject:
     sources = get_cli_context(ctx).services.machine_sources()
+    chosen = [Section(s) for s in sections] or default_sections(sources)
+    if not cpuid:
+        # Out of the section list, and a CPU that refuses, so no reader can map executable memory.
+        chosen = [s for s in chosen if s is not Section.CPUID]
+        sources = dataclasses.replace(sources, cpuid=CpuidOff())
     return collect(
         sources,
         label=label or platform.node() or "this machine",
         collected_at=_now(),
         tool_version=__init__conf__.version,
-        sections=[Section(s) for s in sections] or None,
+        sections=chosen,
     )
 
 
@@ -106,16 +114,30 @@ _IN = click.Path(exists=False, dir_okay=False, path_type=Path)
 )
 @option("--label", default=None, help="A name for this reading (default: the computer name).")
 @option("--out", type=_OUT, default=None, help="Also save the reading to this file.")
+@option(
+    "--no-cpuid",
+    "no_cpuid",
+    is_flag=True,
+    help="Do not run CPUID (it needs a page of executable memory, which endpoint security may flag).",
+)
 @_json_options
 @click.pass_context
 def cli_collect(
-    ctx: click.Context, *, sections: tuple[str, ...], label: str | None, out: Path | None, as_json: bool, bare: bool
+    ctx: click.Context,
+    *,
+    sections: tuple[str, ...],
+    label: str | None,
+    out: Path | None,
+    no_cpuid: bool,
+    as_json: bool,
+    bare: bool,
 ) -> None:
-    """Read everything this Windows machine says about itself.
+    """Read everything this machine says about itself (Windows or Linux).
 
-    SMBIOS, ACPI, firmware, CPU, memory, disks, every network adapter with its PCI location and
-    settings, every device, Windows ids and licensing, TPM and security state. Product keys are
-    masked to their last five characters.
+    On Windows: SMBIOS, ACPI, firmware, CPU and CPUID, memory, disks, every network adapter with
+    its PCI location and settings, every device, Windows ids and licensing, TPM and security
+    state. On Linux this version reads CPUID; the other sections follow. Product keys are masked
+    to their last five characters.
 
     \f
     Example:
@@ -129,7 +151,7 @@ def cli_collect(
     """
     mode = _mode(as_json, bare)
     try:
-        reading = _read_machine(ctx, label, sections)
+        reading = _read_machine(ctx, label, sections, cpuid=not no_cpuid)
         if out is not None:
             save_json(out, reading)
     except _REFUSALS as exc:
@@ -213,7 +235,7 @@ def cli_check(
     mode = _mode(as_json, bare)
     try:
         base = load_reading(baseline)
-        fresh = _read_machine(ctx, None, ())
+        fresh = _read_machine(ctx, None, (), cpuid=True)
         if save is not None:
             save_json(save, fresh)
         _finish_comparison(ctx, mode, "check", check(base, fresh), diff_only=diff_only, out=out)

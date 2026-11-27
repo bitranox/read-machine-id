@@ -1,4 +1,4 @@
-"""Type-safe domain enums for output formats and deployment targets."""
+"""Type-safe domain enums: output formats, deployment targets, the OS a reading was taken on."""
 
 from __future__ import annotations
 
@@ -49,7 +49,20 @@ class DeployTarget(str, Enum):
     USER = "user"
 
 
+class MachineOs(str, Enum):
+    """The operating system a reading was taken on, as ``meta.os`` records it.
+
+    Example:
+        >>> MachineOs.LINUX.value
+        'linux'
+    """
+
+    WINDOWS = "windows"
+    LINUX = "linux"
+
+
 __all__ = [
     "DeployTarget",
+    "MachineOs",
     "OutputFormat",
 ]

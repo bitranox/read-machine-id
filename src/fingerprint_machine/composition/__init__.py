@@ -12,13 +12,15 @@ from ..adapters.config.display import display_config
 # Configuration services
 from ..adapters.config.loader import get_config, get_default_config_path
 
+# Machine sources
+from ..adapters.cpuid import NativeCpuid
+from ..adapters.linux.sysfs import SysfsLinuxSource
+
 # Logging services
 from ..adapters.logging.setup import check_logging_config, init_logging
-
-# Machine sources
 from ..adapters.windows.platform import PwshpyPlatformSource
 from ..adapters.windows.registry import LibRegistrySource
-from ..application.machine_ports import Sources
+from ..application.machine_ports import LinuxSources, MachineSources, WindowsSources
 from ..domain.machine_errors import UnsupportedPlatformError
 
 # Static conformance assertions - pyright verifies that each adapter function
@@ -26,7 +28,7 @@ from ..domain.machine_errors import UnsupportedPlatformError
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..application.machine_ports import PlatformSource, RegistrySource
+    from ..application.machine_ports import CpuidSource, LinuxSource, PlatformSource, RegistrySource
     from ..application.ports import (
         CheckLoggingConfig,
         DeployConfiguration,
@@ -44,6 +46,8 @@ if TYPE_CHECKING:
     _assert_check_logging_config: CheckLoggingConfig = check_logging_config
     _assert_platform: PlatformSource = PwshpyPlatformSource()
     _assert_registry: RegistrySource = LibRegistrySource()
+    _assert_linux: LinuxSource = SysfsLinuxSource()
+    _assert_cpuid: CpuidSource = NativeCpuid()
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,19 +61,21 @@ class AppServices:
     init_logging: InitLogging
     check_logging_config: CheckLoggingConfig
     #: Returns the sources of the machine to read; raises UnsupportedPlatformError where none exist.
-    machine_sources: Callable[[], Sources]
+    machine_sources: Callable[[], MachineSources]
 
 
-def windows_sources() -> Sources:
-    """Return the sources of this Windows machine.
+def machine_sources() -> MachineSources:
+    """Return the sources of the machine this runs on: Windows or Linux.
 
     Raises:
-        UnsupportedPlatformError: this is not Windows; there is no registry or WMI to read.
+        UnsupportedPlatformError: neither Windows nor Linux; there is nothing this tool can read.
     """
-    if sys.platform != "win32":
-        msg = f"reading a machine needs Windows; this is {sys.platform}. 'compare' works everywhere."
-        raise UnsupportedPlatformError(msg)
-    return Sources(platform=PwshpyPlatformSource(), registry=LibRegistrySource())
+    if sys.platform == "win32":
+        return WindowsSources(platform=PwshpyPlatformSource(), registry=LibRegistrySource(), cpuid=NativeCpuid())
+    if sys.platform.startswith("linux"):
+        return LinuxSources(system=SysfsLinuxSource(), cpuid=NativeCpuid())
+    msg = f"reading a machine needs Windows or Linux; this is {sys.platform}. 'compare' works everywhere."
+    raise UnsupportedPlatformError(msg)
 
 
 def build_production() -> AppServices:
@@ -81,11 +87,11 @@ def build_production() -> AppServices:
         display_config=display_config,
         init_logging=init_logging,
         check_logging_config=check_logging_config,
-        machine_sources=windows_sources,
+        machine_sources=machine_sources,
     )
 
 
-def build_testing(*, sources: Sources | None = None) -> AppServices:
+def build_testing(*, sources: MachineSources | None = None) -> AppServices:
     """Wire in-memory adapters into an AppServices container.
 
     Args:
@@ -107,7 +113,7 @@ def build_testing(*, sources: Sources | None = None) -> AppServices:
 
     if sources is None:
         empty = FixtureSources({})
-        sources = Sources(platform=empty, registry=empty)
+        sources = WindowsSources(platform=empty, registry=empty, cpuid=empty)
     machine = sources
     return AppServices(
         get_config=get_config_in_memory,
@@ -130,5 +136,5 @@ __all__ = [
     "get_config",
     "get_default_config_path",
     "init_logging",
-    "windows_sources",
+    "machine_sources",
 ]

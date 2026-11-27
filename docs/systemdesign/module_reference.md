@@ -10,12 +10,13 @@ moves or removes a module, a CLI option or a public name.
 ## Related Files
 
 ### Domain Layer
-- `src/fingerprint_machine/domain/enums.py`  -  Type-safe enums (OutputFormat, DeployTarget)
+- `src/fingerprint_machine/domain/enums.py`  -  Type-safe enums (OutputFormat, DeployTarget, MachineOs)
 - `src/fingerprint_machine/domain/errors.py`  -  Domain exceptions (ConfigurationError)
 - `src/fingerprint_machine/domain/json_types.py`  -  `JsonValue` / `JsonObject` type aliases for readings
-- `src/fingerprint_machine/domain/machine_errors.py`  -  `SourceError`, `MissingKeyError`, `UnsupportedPlatformError`, `NotAReadingError`
+- `src/fingerprint_machine/domain/machine_errors.py`  -  `SourceError`, `MissingKeyError`, `MissingPathError`, `NeedsRootError`, `UnsupportedPlatformError`, `NotAReadingError`
 - `src/fingerprint_machine/domain/smbios.py`  -  SMBIOS (DSP0134) parser and per-type decoders; `split_raw_smbios` for the RSMB block
 - `src/fingerprint_machine/domain/identity.py`  -  PCI instance serials, VMware PVSCSI SAS WWID, product-key masking, withheld registry values, machine SID, ACPI/MSDM, TBS device info
+- `src/fingerprint_machine/domain/cpuid.py`  -  CPUID registers and queries, which leaves to ask next, and the decoder (vendor, signature, brand, feature names, hypervisor bases)
 - `src/fingerprint_machine/domain/certificates.py`  -  EK certificate from a registry store blob; public fields only
 - `src/fingerprint_machine/domain/network.py`  -  Joins the per-adapter WMI classes and the network class key into one record per adapter
 - `src/fingerprint_machine/domain/summary.py`  -  The `summary` block of a reading
@@ -23,8 +24,12 @@ moves or removes a module, a CLI option or a public name.
 
 ### Application Layer
 - `src/fingerprint_machine/application/ports.py`  -  Callable Protocol definitions for adapter functions
-- `src/fingerprint_machine/application/machine_ports.py`  -  `PlatformSource` and `RegistrySource` protocols, the `Sources` bundle
-- `src/fingerprint_machine/application/collect.py`  -  Builds a reading: every section, each question guarded, product keys masked
+- `src/fingerprint_machine/application/machine_ports.py`  -  `PlatformSource`, `RegistrySource` (Windows), `LinuxSource` (Linux) and `CpuidSource` protocols, `NetlinkDump`, the `WindowsSources` and `LinuxSources` bundles (`MachineSources`)
+- `src/fingerprint_machine/application/sections.py`  -  The `Section` enum
+- `src/fingerprint_machine/application/guard.py`  -  `guarded`: one question, its refusal recorded as `{"error"}`
+- `src/fingerprint_machine/application/collect.py`  -  Builds a reading: picks the OS by the sources given, reads the Windows sections, each question guarded, product keys masked
+- `src/fingerprint_machine/application/collect_linux.py`  -  The sections of a Linux reading
+- `src/fingerprint_machine/application/collect_cpuid.py`  -  The `cpuid` section on either OS: each leaf guarded, recorded raw, then decoded
 - `src/fingerprint_machine/application/readings.py`  -  Load and save readings, compare two files, check this machine against a baseline
 
 ### Adapters Layer
@@ -51,7 +56,9 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/adapters/windows/platform.py`  -  `PwshpyPlatformSource`: WMI/CIM through pwshpy, firmware tables
 - `src/fingerprint_machine/adapters/windows/firmware.py`  -  ctypes calls: `GetSystemFirmwareTable` (RSMB, ACPI), `GetFirmwareType`, `Tbsi_GetDeviceInfo`
 - `src/fingerprint_machine/adapters/windows/registry.py`  -  `LibRegistrySource`: registry through lib_registry (fake_winreg off Windows)
-- `src/fingerprint_machine/adapters/fixture.py`  -  `FixtureSources`: replays a recorded machine from JSON (the test seam)
+- `src/fingerprint_machine/adapters/cpuid.py`  -  `NativeCpuid`: CPUID through a machine-code stub in an executable page (x86-64, Windows and Linux); `CpuidOff` for `--no-cpuid`
+- `src/fingerprint_machine/adapters/linux/sysfs.py`  -  `FilesystemReader` (files under a root, typed failures) and `SysfsLinuxSource`, the real `LinuxSource`
+- `src/fingerprint_machine/adapters/fixture.py`  -  `FixtureSources` (Windows) and `FixtureLinuxSource` (a directory mirroring `/` plus a JSON document): replay a recorded machine (the test seam)
 
 ### Adapters Layer (In-Memory / Testing)
 - `src/fingerprint_machine/adapters/memory/__init__.py`  -  Public facade + Protocol conformance assertions
@@ -76,7 +83,8 @@ moves or removes a module, a CLI option or a public name.
 - `conftest.py` (repository root)  -  The two configuration-layer redirects; at the root so they also reach the doctests `--doctest-modules` collects from `src/`
 - `tests/conftest.py`  -  Shared fixtures (see Test Fixtures below)
 - `tests/layer_roots.py`  -  The environment variables that place each configuration layer, shared by both conftests and the subprocess tests
-- `tests/machine_builder.py`  -  Synthetic SMBIOS/ACPI bytes, an EK certificate and a whole recorded machine with a planted product key
+- `tests/machine_builder.py`  -  Synthetic SMBIOS/ACPI bytes, CPUID answers, an EK certificate and a whole recorded machine with a planted product key
+- `tests/linux_builder.py`  -  A synthetic Linux machine: a directory tree under `tmp_path` and its non-file answers
 - `tests/test_cache_effectiveness.py`  -  Configuration loading returns consistent (cached) results
 - `tests/test_cli_config.py`  -  `config`, `config-deploy`, `config-generate-examples` commands
 - `tests/test_cli_config_errors.py`  -  A configuration that cannot be loaded: who reports it, and who still runs
@@ -90,15 +98,19 @@ moves or removes a module, a CLI option or a public name.
 - `tests/test_declared_dependencies.py`  -  Every third-party module imported at run time is a declared dependency
 - `tests/test_deploy_mode_safety.py`  -  `--dir-mode`/`--file-mode` literal, range and safety checks
 - `tests/test_deploy_permissions.py`  -  `config-deploy` permission options
+- `tests/test_cpuid_adapter.py`  -  `NativeCpuid` refusals anywhere; the real CPUID on x86-64 Linux (vendor equals `/proc/cpuinfo`) and Windows
+- `tests/test_cpuid_decode.py`  -  CPUID decoding from hand-built registers: VMware, KVM, Hyper-V with KVM behind it, bare metal, leaf planning
 - `tests/test_compare_and_join.py`  -  Volatile and `newer-probe-only` compare rules, the per-adapter NIC join
 - `tests/test_display.py`  -  Config display formatting tests
 - `tests/test_enums.py`  -  Domain enum tests
 - `tests/test_errors.py`  -  Domain error types
 - `tests/test_identity_values.py`  -  SAS WWID, key masking, MSDM, TBS, machine SID, EK certificates
+- `tests/test_linux_collect.py`  -  A Linux reading from a synthetic tree, and a real `collect --section cpuid` on Linux
+- `tests/test_linux_source.py`  -  `FilesystemReader` failures (needs root, missing, over the cap, not a link) and the fixture's kernel-interface answers
 - `tests/test_logging.py`  -  Logging configuration model
 - `tests/test_logging_dotenv_isolation.py`  -  Only `LOG_*` lines of a `.env` reach the environment; an invalid `[lib_log_rich]` section or `LOG_*` variable is a configuration failure that leaves logging running
 - `tests/test_memory_logging.py`  -  Testing-composition logging runtime and the per-test logging reset
-- `tests/test_machine_cli.py`  -  collect, compare and check end to end on a recorded machine
+- `tests/test_machine_cli.py`  -  collect, compare and check end to end on a recorded machine; `--no-cpuid`; the macOS refusal
 - `tests/test_metadata.py`  -  Package metadata and PEP 561 marker tests
 - `tests/test_metadata_sync.py`  -  `__init__conf__` constants stay in sync with `pyproject.toml`
 - `tests/test_module_entry.py`  -  `python -m` entry tests
@@ -174,10 +186,10 @@ POSIX-conventional exit codes defined in `adapters/cli/exit_codes.py`:
 
 ### collect
 
-Read this Windows machine. Options: `--section NAME` (repeatable), `--label TEXT`, `--out FILE`,
-`--json`, `--json-bare`.
+Read this machine (Windows or Linux). Options: `--section NAME` (repeatable), `--label TEXT`,
+`--out FILE`, `--no-cpuid`, `--json`, `--json-bare`.
 
-**Exit codes:** 0 done; 2 not Windows
+**Exit codes:** 0 done; 2 neither Windows nor Linux
 
 ### compare
 
@@ -191,7 +203,7 @@ Compare two saved readings: `compare ORIGINAL ACTUAL`. Options: `--diff-only`, `
 Read this machine and compare it with a baseline: `check BASELINE`. Options: `--diff-only`,
 `--save FILE` (the fresh reading), `--out FILE` (the comparison), `--json`, `--json-bare`.
 
-**Exit codes:** 0 no differences; 1 differences; 2 not Windows or not a reading
+**Exit codes:** 0 no differences; 1 differences; 2 neither Windows nor Linux, or not a reading
 
 ### info
 

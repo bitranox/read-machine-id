@@ -6,6 +6,27 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ## [Unreleased]
 
+### Added
+
+- `collect` and `check` run on Linux. This version reads the `cpuid` section there; a section not
+  yet read on Linux is recorded as an error in its place and listed under `skipped`.
+- A `cpuid` section on Windows and Linux: vendor, family, model, stepping, brand string, the
+  feature flags of leaves 1, 7 and 0x80000001 (named as `/proc/cpuinfo` names them, unnamed bits
+  as `bit<N>`), the hypervisor-present bit, every hypervisor signature found by scanning the
+  hypervisor bases from 0x40000000 (a KVM guest with Hyper-V enlightenments shows both "Microsoft
+  Hv" and "KVMKVMKVM"), and every leaf read as raw registers. A leaf that cannot be read is one
+  recorded error; the rest is still read.
+- `collect --no-cpuid` leaves the `cpuid` section out and never maps the executable page CPUID
+  needs.
+- `meta.os` records `windows` or `linux`.
+
+### Changed
+
+- Schema version 3. Compare marks fields only a schema 3 reading has as `newer-probe-only`
+  against an older baseline.
+- `collect` and `check` refuse with exit 2 only on an OS that is neither Windows nor Linux
+  (macOS).
+
 ## [0.1.0] - 2026-11-27
 
 ### Added

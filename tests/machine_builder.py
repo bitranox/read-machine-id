@@ -140,6 +140,32 @@ def store_blob(der: bytes) -> bytes:
     return struct.pack("<III", 3, 1, 4) + b"junk" + struct.pack("<III", 32, 1, len(der)) + der
 
 
+def _regs(eax: int, ebx: int, ecx: int, edx: int) -> JsonValue:
+    return {"eax": f"0x{eax:08x}", "ebx": f"0x{ebx:08x}", "ecx": f"0x{ecx:08x}", "edx": f"0x{edx:08x}"}
+
+
+def _words(text: bytes) -> list[int]:
+    return [int.from_bytes(text[i : i + 4], "little") for i in range(0, len(text), 4)]
+
+
+def cpuid_document(*, hypervisor: bytes = b"VMwareVMware", vendor: bytes = b"GenuineIntel") -> JsonObject:
+    """Return recorded CPUID answers, keyed as a reading's ``cpuid.raw`` keys them.
+
+    Leaf 0 spells ``vendor`` (EBX, EDX, ECX), leaf 1 sets the hypervisor bit, and leaf
+    0x40000000 spells ``hypervisor`` (EBX, ECX, EDX) with 0x40000001 as its highest leaf.
+    """
+    v_ebx, v_edx, v_ecx = _words(vendor)
+    h_ebx, h_ecx, h_edx = _words(hypervisor.ljust(12, b"\0"))
+    return {
+        "0x00000000:0": _regs(1, v_ebx, v_ecx, v_edx),
+        "0x00000001:0": _regs(0x000306E4, 0, 1 << 31, 1),
+        "0x80000000:0": _regs(0x80000001, 0, 0, 0),
+        "0x80000001:0": _regs(0, 0, 0, 1 << 29),
+        "0x40000000:0": _regs(0x40000001, h_ebx, h_ecx, h_edx),
+        "0x40000001:0": _regs(0, 0, 0, 0),
+    }
+
+
 def _key(values: dict[str, JsonValue] | None = None, subkeys: list[str] | None = None) -> JsonValue:
     entry: JsonObject = {"values": values or {}, "subkeys": list[JsonValue](subkeys or [])}
     return entry
@@ -256,7 +282,7 @@ def machine_document(*, product_id: str = "00330-80000-00000-AA111", serial: str
         "tbs_hex": struct.pack("<IIII", 1, 2, 4, 0x4D).hex(),
         "firmware_type": "UEFI",
     }
-    return {"cim": cim, "registry": registry, "firmware": firmware}
+    return {"cim": cim, "registry": registry, "firmware": firmware, "cpuid": cpuid_document()}
 
 
 __all__ = [
@@ -265,6 +291,7 @@ __all__ = [
     "PVSCSI_SERIAL",
     "PVSCSI_WWID",
     "acpi_table",
+    "cpuid_document",
     "ek_certificate_der",
     "machine_document",
     "smbios_table",

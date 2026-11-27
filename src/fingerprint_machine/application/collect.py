@@ -1,9 +1,12 @@
-"""Collect a machine reading: every section, each question asked through the two sources.
+"""Collect a machine reading: every section, each question asked through the machine's sources.
 
 A reading is one JSON document. Each section is read independently and each question inside a
 section is guarded: a source that cannot answer one question (:class:`SourceError`, or a missing
 row or value) records ``{"error": ...}`` in that place and the reading goes on. Anything else is
 a defect in this tool and is left to surface.
+
+:func:`collect` takes either OS's sources: :class:`WindowsSources` are read by the readers in this
+module, :class:`LinuxSources` by :mod:`.collect_linux`. ``meta.os`` says which.
 
 The last step masks every product key in the whole document, so no reader added later can leak
 one by forgetting to.
@@ -17,10 +20,10 @@ Contents:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from enum import Enum
 from typing import TYPE_CHECKING
 
 from ..domain.certificates import der_from_store_blob, describe_certificate
+from ..domain.enums import MachineOs
 from ..domain.identity import (
     decode_acpi_header,
     decode_tbs_device_info,
@@ -29,19 +32,25 @@ from ..domain.identity import (
     msdm_product_key,
     withhold_registry_values,
 )
-from ..domain.machine_errors import MissingKeyError, SourceError
+from ..domain.machine_errors import MissingKeyError
 from ..domain.network import BY_INDEX, BY_NAME, join_adapters
 from ..domain.smbios import decode_smbios
 from ..domain.summary import summarize
+from .collect_cpuid import read_cpuid
+from .collect_linux import LINUX_SECTIONS, read_linux_section
+from .guard import guarded
+from .machine_ports import WindowsSources
+from .sections import Section
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
     from ..domain.json_types import JsonObject, JsonValue
-    from .machine_ports import RegistryData, Sources
+    from .machine_ports import MachineSources, RegistryData
 
-#: The reading layout version. 1 was the predecessor script's layout (``probe_version``).
-SCHEMA_VERSION = 2
+#: The reading layout version. 1 was the predecessor script's layout (``probe_version``); 3 added
+#: ``meta.os``, Linux readings and the ``cpuid`` section.
+SCHEMA_VERSION = 3
 
 _CIMV2 = "root/cimv2"
 _STORAGE = "root/Microsoft/Windows/Storage"
@@ -58,35 +67,7 @@ _CURRENT_VERSION = r"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
 _CLOUD_JOIN = r"HKLM\SYSTEM\CurrentControlSet\Control\CloudDomainJoin\JoinInfo"
 _WINDOWS_PRODUCT = "55c92734-d682-4d71-983e-d6ec3f16059f"
 
-# What a guarded question may raise besides SourceError: a missing row, value or key, or a value
-# of the wrong shape. Anything else is a defect and surfaces.
-_ANSWER_ERRORS: tuple[type[Exception], ...] = (SourceError, KeyError, IndexError, ValueError, TypeError)
-
-Reader = Callable[["Sources"], "JsonValue"]
-
-
-class Section(str, Enum):
-    """The sections of a reading, in document order after ``meta`` and ``summary``."""
-
-    SMBIOS = "smbios"
-    ACPI = "acpi"
-    PLATFORM = "platform"
-    CPU = "cpu"
-    MEMORY = "memory"
-    DISKS = "disks"
-    NETWORK = "network"
-    HARDWARE = "hardware"
-    DEVICES = "devices"
-    WINDOWS = "windows"
-    SECURITY = "security"
-    SERVICES = "services"
-
-
-def _guarded(read: Callable[[], JsonValue]) -> JsonValue:
-    try:
-        return read()
-    except _ANSWER_ERRORS as exc:
-        return {"error": f"{type(exc).__name__}: {exc}"}
+Reader = Callable[[WindowsSources], "JsonValue"]
 
 
 def registry_json(data: RegistryData) -> JsonValue:
@@ -104,18 +85,18 @@ def registry_json(data: RegistryData) -> JsonValue:
     return data
 
 
-def _values(src: Sources, key: str) -> JsonObject:
+def _values(src: WindowsSources, key: str) -> JsonObject:
     return {name: registry_json(data) for name, data in src.registry.values(key).items()}
 
 
-def _value(src: Sources, key: str, name: str) -> JsonValue:
+def _value(src: WindowsSources, key: str, name: str) -> JsonValue:
     return registry_json(src.registry.values(key)[name])
 
 
 def cim(class_name: str, namespace: str = _CIMV2, where: str | None = None) -> Reader:
     """Return a reader for every instance of a CIM class."""
 
-    def read(src: Sources) -> JsonValue:
+    def read(src: WindowsSources) -> JsonValue:
         rows: list[JsonValue] = list(src.platform.cim(class_name, namespace=namespace, where=where))
         return rows
 
@@ -137,25 +118,25 @@ def reg_value(key: str, name: str) -> Reader:
 # --------------------------------------------------------------------------------------------
 
 
-def read_smbios(src: Sources) -> JsonValue:
+def read_smbios(src: WindowsSources) -> JsonValue:
     """Decode the firmware's SMBIOS table."""
     table, version = src.platform.smbios_table()
     return decode_smbios(table, version)
 
 
-def _acpi_headers(src: Sources) -> JsonValue:
+def _acpi_headers(src: WindowsSources) -> JsonValue:
     headers: list[JsonValue] = [decode_acpi_header(t) for t in src.platform.acpi_tables()]
     return headers
 
 
-def _msdm(src: Sources) -> JsonValue:
+def _msdm(src: WindowsSources) -> JsonValue:
     for table in src.platform.acpi_tables():
         if table[:4] == b"MSDM":
             return msdm_product_key(table)
     return {"present": False, "product_key": None}
 
 
-def _acpi_registry(src: Sources) -> JsonValue:
+def _acpi_registry(src: WindowsSources) -> JsonValue:
     # HKLM\HARDWARE\ACPI\<table>\<OEM id>\<table id>\<revision>: what Windows recorded at boot.
     out: JsonObject = {}
     base = r"HKLM\HARDWARE\ACPI"
@@ -165,19 +146,19 @@ def _acpi_registry(src: Sources) -> JsonValue:
     return out
 
 
-def _acpi_oem(src: Sources, table_key: str, oem: str) -> JsonValue:
+def _acpi_oem(src: WindowsSources, table_key: str, oem: str) -> JsonValue:
     ids = src.registry.subkeys(rf"{table_key}\{oem}")
     revisions: list[JsonValue] = [r for i in ids for r in src.registry.subkeys(rf"{table_key}\{oem}\{i}")]
     table_ids: list[JsonValue] = list(ids)
     return {"oem_id": oem, "table_id": table_ids, "revision": revisions}
 
 
-def _class_keys(src: Sources) -> dict[str, JsonObject]:
+def _class_keys(src: WindowsSources) -> dict[str, JsonObject]:
     keys: dict[str, JsonObject] = {}
     for number in src.registry.subkeys(_NET_CLASS):
         if not number.isdigit():
             continue
-        values = _guarded(lambda number=number: _values(src, rf"{_NET_CLASS}\{number}"))
+        values = guarded(lambda number=number: _values(src, rf"{_NET_CLASS}\{number}"))
         if not isinstance(values, dict):
             continue
         guid = values.get("NetCfgInstanceId")
@@ -186,38 +167,38 @@ def _class_keys(src: Sources) -> dict[str, JsonObject]:
     return keys
 
 
-def _category_rows(src: Sources, class_name: str) -> list[JsonObject]:
+def _category_rows(src: WindowsSources, class_name: str) -> list[JsonObject]:
     namespace = _CIMV2 if class_name.startswith("Win32_") else _STANDARD
     return src.platform.cim(class_name, namespace=namespace)
 
 
-def _category_json(src: Sources, class_name: str) -> JsonValue:
+def _category_json(src: WindowsSources, class_name: str) -> JsonValue:
     rows: list[JsonValue] = list(_category_rows(src, class_name))
     return rows
 
 
-def _class_keys_json(src: Sources) -> JsonValue:
+def _class_keys_json(src: WindowsSources) -> JsonValue:
     keys: JsonObject = dict(_class_keys(src))
     return keys
 
 
-def _subkeys_json(src: Sources, key: str) -> JsonValue:
+def _subkeys_json(src: WindowsSources, key: str) -> JsonValue:
     names: list[JsonValue] = list(src.registry.subkeys(key))
     return names
 
 
-def read_network(src: Sources) -> JsonValue:
+def read_network(src: WindowsSources) -> JsonValue:
     """Read every adapter with every per-adapter class joined to it."""
     adapters = src.platform.cim("MSFT_NetAdapter", namespace=_STANDARD)
     categories: dict[str, Sequence[JsonObject]] = {}
     errors: JsonObject = {}
     for category, class_name in {**BY_NAME, **BY_INDEX}.items():
-        answer = _guarded(lambda class_name=class_name: _category_json(src, class_name))
+        answer = guarded(lambda class_name=class_name: _category_json(src, class_name))
         if isinstance(answer, list):
             categories[category] = [r for r in answer if isinstance(r, dict)]
         else:
             errors[category] = answer
-    class_keys = _guarded(lambda: _class_keys_json(src))
+    class_keys = guarded(lambda: _class_keys_json(src))
     joined = join_adapters(adapters, categories, _as_class_keys(class_keys))
     joined["errors"] = errors
     if not isinstance(class_keys, dict) or "error" in class_keys:
@@ -231,13 +212,13 @@ def _as_class_keys(value: JsonValue) -> dict[str, JsonObject]:
     return {k: v for k, v in value.items() if isinstance(v, dict)}
 
 
-def _instances(src: Sources) -> Iterable[str]:
+def _instances(src: WindowsSources) -> Iterable[str]:
     # Enum\<bus>\<device>\<instance>: one key per device instance Windows has ever seen.
     for bus in src.registry.subkeys(_ENUM):
-        devices = _guarded(lambda bus=bus: _subkeys_json(src, rf"{_ENUM}\{bus}"))
+        devices = guarded(lambda bus=bus: _subkeys_json(src, rf"{_ENUM}\{bus}"))
         for device in devices if isinstance(devices, list) else []:
             path = rf"{bus}\{device}"
-            found = _guarded(lambda path=path: _subkeys_json(src, rf"{_ENUM}\{path}"))
+            found = guarded(lambda path=path: _subkeys_json(src, rf"{_ENUM}\{path}"))
             yield from (rf"{path}\{inst}" for inst in (found if isinstance(found, list) else []))
 
 
@@ -246,10 +227,10 @@ def _upper_id(row: JsonObject, key: str) -> str:
     return value.upper() if isinstance(value, str) else ""
 
 
-def read_devices(src: Sources) -> JsonValue:
+def read_devices(src: WindowsSources) -> JsonValue:
     """Read every device instance in the registry, present or not, with its driver if present."""
     present = {_upper_id(r, "DeviceID"): r for r in src.platform.cim("Win32_PnPEntity")}
-    drivers_answer = _guarded(lambda: cim("Win32_PnPSignedDriver")(src))
+    drivers_answer = guarded(lambda: cim("Win32_PnPSignedDriver")(src))
     driver_rows = drivers_answer if isinstance(drivers_answer, list) else []
     drivers = {_upper_id(r, "DeviceID"): r for r in driver_rows if isinstance(r, dict)}
     rows: list[JsonValue] = []
@@ -260,7 +241,7 @@ def read_devices(src: Sources) -> JsonValue:
                 "instance_id": inst,
                 "present": p is not None,
                 "name": p.get("Name") if p else None,
-                "registry": _guarded(lambda inst=inst: _values(src, rf"{_ENUM}\{inst}")),
+                "registry": guarded(lambda inst=inst: _values(src, rf"{_ENUM}\{inst}")),
                 "driver": drivers.get(inst.upper()),
             }
         )
@@ -270,12 +251,12 @@ def read_devices(src: Sources) -> JsonValue:
     return {"instances": rows, "acpi_ids": acpi, "drivers_error": drivers_error}
 
 
-def _local_sids(src: Sources) -> JsonValue:
+def _local_sids(src: WindowsSources) -> JsonValue:
     accounts = src.platform.cim("Win32_UserAccount", where="LocalAccount = TRUE")
     return machine_sid(a.get("SID") for a in accounts)
 
 
-def _optional_subkeys(src: Sources, key: str) -> list[str]:
+def _optional_subkeys(src: WindowsSources, key: str) -> list[str]:
     """Subkeys of a key that only exists on some machines: none when it is absent."""
     try:
         return src.registry.subkeys(key)
@@ -283,19 +264,19 @@ def _optional_subkeys(src: Sources, key: str) -> list[str]:
         return []
 
 
-def _cloud_join(src: Sources) -> JsonValue:
+def _cloud_join(src: WindowsSources) -> JsonValue:
     # The JoinInfo key exists only on a machine joined to Entra ID: absent means not joined.
     return {
-        thumb: _guarded(lambda t=thumb: _values(src, rf"{_CLOUD_JOIN}\{t}"))
+        thumb: guarded(lambda t=thumb: _values(src, rf"{_CLOUD_JOIN}\{t}"))
         for thumb in _optional_subkeys(src, _CLOUD_JOIN)
     }
 
 
-def _current_version(src: Sources) -> JsonValue:
+def _current_version(src: WindowsSources) -> JsonValue:
     return withhold_registry_values(_values(src, _CURRENT_VERSION))
 
 
-def _ek_certificates(src: Sources) -> JsonValue:
+def _ek_certificates(src: WindowsSources) -> JsonValue:
     out: list[JsonValue] = []
     # The store exists only once Windows has cached an EK certificate (a TPM that has one).
     for thumb in _optional_subkeys(src, _EK_STORE):
@@ -306,7 +287,7 @@ def _ek_certificates(src: Sources) -> JsonValue:
     return out
 
 
-def _tbs(src: Sources) -> JsonValue:
+def _tbs(src: WindowsSources) -> JsonValue:
     return decode_tbs_device_info(src.platform.tbs_device_info())
 
 
@@ -388,22 +369,36 @@ ITEM_SECTIONS: Mapping[Section, Mapping[str, Reader]] = {
 
 #: Sections read as one piece (their questions depend on each other).
 WHOLE_SECTIONS: Mapping[Section, Reader] = {
+    Section.CPUID: read_cpuid,
     Section.SMBIOS: read_smbios,
     Section.NETWORK: read_network,
     Section.DEVICES: read_devices,
 }
 
 
-def read_section(src: Sources, section: Section) -> JsonValue:
-    """Read one section, each of its questions guarded."""
+def read_section(src: WindowsSources, section: Section) -> JsonValue:
+    """Read one section of a Windows reading, each of its questions guarded."""
     whole = WHOLE_SECTIONS.get(section)
     if whole is not None:
-        return _guarded(lambda: whole(src))
-    return {name: _guarded(lambda read=read: read(src)) for name, read in ITEM_SECTIONS[section].items()}
+        return guarded(lambda: whole(src))
+    return {name: guarded(lambda read=read: read(src)) for name, read in ITEM_SECTIONS[section].items()}
+
+
+def default_sections(src: MachineSources) -> list[Section]:
+    """Return the sections a reading of this machine holds when none are named, in document order."""
+    if isinstance(src, WindowsSources):
+        return list(Section)
+    return [s for s in Section if s in LINUX_SECTIONS]
+
+
+def _read_body(src: MachineSources, chosen: Sequence[Section]) -> tuple[MachineOs, JsonObject]:
+    if isinstance(src, WindowsSources):
+        return MachineOs.WINDOWS, {s.value: read_section(src, s) for s in chosen}
+    return MachineOs.LINUX, {s.value: read_linux_section(src, s) for s in chosen}
 
 
 def collect(
-    src: Sources,
+    src: MachineSources,
     *,
     label: str,
     collected_at: str,
@@ -413,23 +408,24 @@ def collect(
     """Read the machine and return the reading, product keys masked.
 
     Args:
-        src: the platform and registry sources.
+        src: the machine's sources; their type decides the OS the reading is taken as.
         label: a name for this reading, shown when comparing.
         collected_at: when the reading was taken (ISO 8601, UTC).
         tool_version: the version of this tool.
-        sections: the sections to read; all of them when None.
+        sections: the sections to read; this OS's sections (:func:`default_sections`) when None.
 
     Returns:
         ``meta``, ``summary`` and one key per section read.
     """
-    chosen = list(Section) if sections is None else list(sections)
-    body: JsonObject = {s.value: read_section(src, s) for s in chosen}
+    chosen = default_sections(src) if sections is None else list(sections)
+    machine_os, body = _read_body(src, chosen)
     reading: JsonObject = {
         "meta": {
             "label": label,
             "tool": "fingerprint-machine",
             "tool_version": tool_version,
             "schema_version": SCHEMA_VERSION,
+            "os": machine_os.value,
             "collected_at": collected_at,
             "sections": [s.value for s in chosen],
         },
@@ -448,6 +444,7 @@ __all__ = [
     "Section",
     "cim",
     "collect",
+    "default_sections",
     "read_devices",
     "read_network",
     "read_section",

@@ -3,7 +3,9 @@
 Contents:
     * :class:`SourceError` - a source could not answer one question; the reading goes on.
     * :class:`MissingKeyError` - the registry key asked for does not exist.
-    * :class:`UnsupportedPlatformError` - this machine cannot be read (not Windows).
+    * :class:`MissingPathError` - the file or directory asked for does not exist (Linux).
+    * :class:`NeedsRootError` - only root may read what was asked for (Linux).
+    * :class:`UnsupportedPlatformError` - this machine cannot be read (neither Windows nor Linux).
     * :class:`NotAReadingError` - a file given as a reading is not one.
 """
 
@@ -32,8 +34,32 @@ class MissingKeyError(SourceError):
     """
 
 
+class MissingPathError(SourceError):
+    """The file or directory asked for does not exist.
+
+    Like :class:`MissingKeyError`: for an optional path (a device class this machine has none
+    of) that is the answer itself, and readers of such paths report an empty result.
+
+    Example:
+        >>> isinstance(MissingPathError("/sys/class/tpm: no such file or directory"), SourceError)
+        True
+    """
+
+
+class NeedsRootError(SourceError):
+    """Only root may read what was asked for: a serial number, a firmware table, a device.
+
+    Recorded per value as ``{"error": "NeedsRootError: ..."}``, never as absent: the value exists,
+    an unprivileged run just cannot see it.
+
+    Example:
+        >>> str(NeedsRootError("/sys/firmware/dmi/tables/DMI: needs root"))
+        '/sys/firmware/dmi/tables/DMI: needs root'
+    """
+
+
 class UnsupportedPlatformError(Exception):
-    """The machine this runs on cannot be read: collecting needs Windows.
+    """The machine this runs on cannot be read: collecting needs Windows or Linux.
 
     Example:
         >>> isinstance(UnsupportedPlatformError("linux"), Exception)
@@ -50,4 +76,11 @@ class NotAReadingError(ValueError):
     """
 
 
-__all__ = ["MissingKeyError", "NotAReadingError", "SourceError", "UnsupportedPlatformError"]
+__all__ = [
+    "MissingKeyError",
+    "MissingPathError",
+    "NeedsRootError",
+    "NotAReadingError",
+    "SourceError",
+    "UnsupportedPlatformError",
+]

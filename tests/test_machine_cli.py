@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import pytest
@@ -12,8 +13,9 @@ from machine_builder import NIC_GUID, PLANTED_KEY, PVSCSI_WWID, machine_document
 
 from fingerprint_machine.adapters.cli.root import cli
 from fingerprint_machine.adapters.fixture import FixtureSources
-from fingerprint_machine.application.machine_ports import Sources
+from fingerprint_machine.application.machine_ports import WindowsSources
 from fingerprint_machine.composition import build_production, build_testing
+from fingerprint_machine.domain.cpuid import CpuidRegs
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -25,7 +27,7 @@ if TYPE_CHECKING:
 
 def _replay(document: JsonObject) -> Callable[[], AppServices]:
     recorded = FixtureSources(document)
-    return lambda: build_testing(sources=Sources(platform=recorded, registry=recorded))
+    return lambda: build_testing(sources=WindowsSources(platform=recorded, registry=recorded, cpuid=recorded))
 
 
 def _machine(**kwargs: str) -> Callable[[], AppServices]:
@@ -59,6 +61,7 @@ def test_collect_json_is_an_envelope_with_every_section() -> None:
         "acpi",
         "platform",
         "cpu",
+        "cpuid",
         "memory",
         "disks",
         "network",
@@ -69,7 +72,73 @@ def test_collect_json_is_an_envelope_with_every_section() -> None:
         "services",
     ):
         assert section in reading, section
-    assert _obj(reading["meta"])["schema_version"] == 2
+    meta = _obj(reading["meta"])
+    assert (meta["schema_version"], meta["os"]) == (3, "windows")
+
+
+@pytest.mark.os_agnostic
+def test_the_cpuid_section_names_the_hypervisor() -> None:
+    cpuid = _obj(_obj(_collect(_machine())["data"])["cpuid"])
+    assert (cpuid["vendor"], cpuid["hypervisor_vendor"], cpuid["hypervisor_present_bit"]) == (
+        "GenuineIntel",
+        "VMwareVMware",
+        True,
+    )
+    raw = _obj(cpuid["raw"])
+    assert sorted(raw) == [
+        "0x00000000:0",
+        "0x00000001:0",
+        "0x40000000:0",
+        "0x40000001:0",
+        "0x80000000:0",
+        "0x80000001:0",
+    ]
+
+
+@dataclass
+class _CountingCpuid:
+    """A CPU that answers zeros and counts every question."""
+
+    calls: list[int] = field(default_factory=list[int])
+
+    def cpuid(self, leaf: int, *, subleaf: int = 0) -> CpuidRegs:
+        del subleaf
+        self.calls.append(leaf)
+        return CpuidRegs(eax=0, ebx=0, ecx=0, edx=0)
+
+
+def _counted(cpu: _CountingCpuid) -> Callable[[], AppServices]:
+    recorded = FixtureSources(machine_document())
+    return lambda: build_testing(sources=WindowsSources(platform=recorded, registry=recorded, cpuid=cpu))
+
+
+@pytest.mark.os_agnostic
+def test_no_cpuid_asks_the_cpu_nothing_and_leaves_the_section_out() -> None:
+    cpu = _CountingCpuid()
+    code, out = _run(["collect", "--no-cpuid", "--json-bare"], _counted(cpu))
+    assert code == 0, out
+    reading = _obj(json.loads(out))
+    assert "cpuid" not in reading
+    sections = _obj(reading["meta"])["sections"]
+    assert isinstance(sections, list)
+    assert "cpuid" not in sections
+    assert cpu.calls == []
+
+
+@pytest.mark.os_agnostic
+def test_no_cpuid_wins_over_asking_for_the_cpuid_section() -> None:
+    cpu = _CountingCpuid()
+    code, out = _run(["collect", "--section", "cpuid", "--no-cpuid", "--json-bare"], _counted(cpu))
+    assert code == 0, out
+    assert _obj(_obj(json.loads(out))["meta"])["sections"] == []
+    assert cpu.calls == []
+
+
+@pytest.mark.os_agnostic
+def test_collect_asks_the_cpu_by_default() -> None:
+    cpu = _CountingCpuid()
+    assert _run(["collect", "--section", "cpuid", "--json-bare"], _counted(cpu))[0] == 0
+    assert cpu.calls[0] == 0
 
 
 @pytest.mark.os_agnostic
@@ -212,10 +281,11 @@ def test_a_file_that_is_not_a_reading_is_refused_as_json(tmp_path: Path) -> None
     assert (failure["ok"], _obj(failure["error"])["type"]) == (False, "NotAReadingError")
 
 
-@pytest.mark.os_posix
-def test_collect_off_windows_is_refused_with_exit_2() -> None:
-    assert sys.platform != "win32"
+@pytest.mark.os_macos
+def test_collect_on_macos_is_refused_with_exit_2() -> None:
+    assert sys.platform == "darwin"
     code, out = _run(["collect", "--json-bare"], build_production)
     assert code == 2
-    failure = _obj(json.loads(out))
-    assert _obj(failure["error"])["type"] == "UnsupportedPlatformError"
+    error = _obj(_obj(json.loads(out))["error"])
+    assert error["type"] == "UnsupportedPlatformError"
+    assert "Windows or Linux" in str(error["message"])
