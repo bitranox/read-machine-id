@@ -121,7 +121,7 @@ def ek_certificate_der() -> bytes:
     """
     key = ec.generate_private_key(ec.SECP256R1())
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Synthetic EK")])
-    start = dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc)
+    start = dt.datetime(2024, 1, 1, tzinfo=dt.UTC)
     cert = (
         x509.CertificateBuilder()
         .subject_name(name)

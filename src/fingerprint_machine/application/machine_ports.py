@@ -26,8 +26,8 @@ Contents:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import TYPE_CHECKING, Protocol, TypeAlias
+from enum import StrEnum
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     from ..domain.json_types import JsonObject
 
 #: One registry value's data, as winreg returns it.
-RegistryData: TypeAlias = "bytes | int | str | list[str] | None"
+type RegistryData = bytes | int | str | list[str] | None
 
 
 class PlatformSource(Protocol):
@@ -115,7 +115,7 @@ class CpuidSource(Protocol):
         ...
 
 
-class NetlinkDump(str, Enum):
+class NetlinkDump(StrEnum):
     """The rtnetlink tables a dump request lists."""
 
     LINKS = "links"
@@ -215,7 +215,7 @@ class LinuxSources:
 
 
 #: The sources of one collection, on either OS.
-MachineSources: TypeAlias = "WindowsSources | LinuxSources"
+type MachineSources = WindowsSources | LinuxSources
 
 
 __all__ = [

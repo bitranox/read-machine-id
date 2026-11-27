@@ -40,8 +40,8 @@ The gate is `make test`, and CI runs the same checks: Ruff (lint and format), Py
 mode, the import-linter layer contracts, Bandit, pip-audit, and Pytest with coverage, including
 the doctests in the source modules. The tests replay a recorded synthetic machine through the real
 CLI, and one test reads the CI's own Windows runner for real. A planted product key proves that no
-full key reaches the output. CI runs on Linux and Windows for every Python version from
-3.10 to 3.15. The badges at the top of the README report the live state.
+full key reaches the output. CI runs on Linux and Windows under
+Python 3.14 and 3.15. The badges at the top of the README report the live state.
 
 ## Checking it yourself
 

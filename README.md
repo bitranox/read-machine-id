@@ -190,6 +190,9 @@ two readings come from different schema versions, a field only the newer one col
 
 ## Install - recommended via uv
 
+It needs Python 3.14 or newer (3.14 and 3.15 are tested). uv fetches a suitable Python by
+itself when none is installed.
+
 ```bash
 # One-shot run, no install
 uvx fingerprint-machine@latest --help

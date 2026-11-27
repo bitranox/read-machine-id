@@ -11,9 +11,7 @@ Contents:
 
 from __future__ import annotations
 
-from typing import TypeAlias
-
-JsonValue: TypeAlias = "bool | int | float | str | list[JsonValue] | dict[str, JsonValue] | None"
-JsonObject: TypeAlias = "dict[str, JsonValue]"
+type JsonValue = bool | int | float | str | list[JsonValue] | dict[str, JsonValue] | None
+type JsonObject = dict[str, JsonValue]
 
 __all__ = ["JsonObject", "JsonValue"]

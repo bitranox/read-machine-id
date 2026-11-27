@@ -6,10 +6,10 @@ Contents:
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Section(str, Enum):
+class Section(StrEnum):
     """The sections of a reading, in document order after ``meta`` and ``summary``.
 
     Windows reads all of them; Linux reads the ones its collector lists and records an error for

@@ -5,6 +5,8 @@
 This guide collects every supported method to install `fingerprint_machine`, including
 isolated environments and system package managers. Pick the option that matches your workflow.
 
+It needs Python 3.14 or newer; CI tests 3.14 and 3.15 on Windows and Linux.
+
 
 ## We recommend `uv` to install the package
 

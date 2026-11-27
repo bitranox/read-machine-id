@@ -18,7 +18,7 @@ Contents:
 from __future__ import annotations
 
 import json
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 from typing import TYPE_CHECKING
 
 from rich.console import Console
@@ -40,7 +40,7 @@ class MachineExit(IntEnum):
     ERROR = 2
 
 
-class OutputMode(str, Enum):
+class OutputMode(StrEnum):
     """How a command prints its result."""
 
     HUMAN = "human"

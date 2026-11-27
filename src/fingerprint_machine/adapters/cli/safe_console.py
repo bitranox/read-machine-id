@@ -91,7 +91,7 @@ def _streams_own_replacement(error: UnicodeEncodeError, stream_errors: str) -> s
     single = UnicodeEncodeError(error.encoding, error.object, error.start, error.start + 1, error.reason)
     try:
         replacement, _ = codecs.lookup_error(stream_errors)(single)
-    except (UnicodeError, LookupError):
+    except UnicodeError, LookupError:
         return "?"
     if isinstance(replacement, bytes):
         return _escape_c1_controls(replacement)

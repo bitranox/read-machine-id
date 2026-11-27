@@ -24,7 +24,7 @@ Contents:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -60,7 +60,7 @@ VOLATILE_KEYS = frozenset(
 )
 
 
-class FieldStatus(str, Enum):
+class FieldStatus(StrEnum):
     """How one field of the two readings compares."""
 
     SAME = "same"

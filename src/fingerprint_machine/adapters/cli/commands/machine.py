@@ -65,7 +65,7 @@ def _json_options(func: Callable[..., None]) -> Callable[..., None]:
 
 
 def _now() -> str:
-    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    return dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
 
 
 def _read_machine(ctx: click.Context, label: str | None, sections: tuple[str, ...], *, cpuid: bool) -> JsonObject:

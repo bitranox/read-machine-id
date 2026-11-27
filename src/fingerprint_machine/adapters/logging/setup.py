@@ -297,7 +297,7 @@ def _load_log_variables(config: Config, dotenv_path: str | None) -> None:
         return
     try:
         values = dotenv_values(path, encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
+    except OSError, UnicodeDecodeError:
         return
     for name, value in values.items():
         if name.startswith(_LOG_VARIABLE_PREFIX) and value is not None:

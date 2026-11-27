@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """Output format options for configuration display.
 
     Defines valid output format choices for the config command.
@@ -26,7 +26,7 @@ class OutputFormat(str, Enum):
     JSON = "json"
 
 
-class DeployTarget(str, Enum):
+class DeployTarget(StrEnum):
     """Configuration deployment target layers.
 
     Defines valid target layers for configuration file deployment.
@@ -49,7 +49,7 @@ class DeployTarget(str, Enum):
     USER = "user"
 
 
-class MachineOs(str, Enum):
+class MachineOs(StrEnum):
     """The operating system a reading was taken on, as ``meta.os`` records it.
 
     Example:

@@ -3,7 +3,7 @@ name = "fingerprint-machine"
 version = "0.1.0"
 description = "Read a Windows machine's identity (SMBIOS, NICs, serials, TPM, licensing) as JSON and compare readings"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 dependencies = [
     "rich-click>=1.9.9",
     # Imported directly (adapters/cli/main.py, commands/config.py), not only through rich-click.
@@ -16,11 +16,8 @@ dependencies = [
     "python-dotenv>=1.2.4",
     "lib_layered_config>=9.0.3",
     "pydantic>=2.14.4",
-    # orjson ships no free-threaded build, and no marker tells 3.14t from 3.14, so it is
-    # required only below 3.14 (as in lib_log_rich and lib_layered_config); from 3.14 it is the
-    # `orjson` extra and the code falls back to stdlib json. Drop the marker once orjson
-    # publishes cp314t wheels.
-    "orjson>=3.13.0; python_version < \"3.14\"",
+    # Parses --set override values (adapters/config/overrides.py); pwshpy needs it too.
+    "orjson>=3.13.0",
     "pwshpy>=1.12.3",
     "lib-registry>=3.4.0",
     "cryptography>=50.0.2",
@@ -32,10 +29,6 @@ keywords = ["windows", "smbios", "hardware-inventory", "machine-identity", "tpm"
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3.15",
   "License :: OSI Approved :: MIT License",
@@ -65,13 +58,11 @@ Repository = "https://github.com/bitranox/fingerprint-machine.git"
 Issues = "https://github.com/bitranox/fingerprint-machine/issues"
 
 [project.optional-dependencies]
-# orjson's fast path on 3.14+ GIL builds; a free-threaded build never imports it.
-orjson = ["orjson>=3.13.0"]
 dev = [
   "pytest>=9.2.0",
   "pytest-cov>=7.1.0",
   "pytest-xdist>=3.8.0",
-  "hypothesis>=6.168.5",
+  "hypothesis>=6.170.17",
   "ruff>=0.17.6",
   "pyright[nodejs]>=1.1.414",
   "bandit>=1.9.4",
@@ -89,10 +80,8 @@ dev = [
   # "codecov-cli>=11.2.8",
   "pip-audit>=2.10.1",
   "textual>=8.2.8",
-  "import-linter>=2.15",
-  # No free-threaded build; the tests read TOML with tomllib from 3.11 and need rtoml only on 3.10.
-  "rtoml>=0.14.0; python_version < \"3.14\"",
-  "httpx2>=2.14.0",
+  "import-linter>=2.17",
+  "httpx2>=2.16.2",
   # Transitive CVE pins: each raises the floor of a package another dependency pulls in.
   "click>=8.5.1",                # CVE-2026-7246
   "jaraco-context>=6.1.2",       # CVE-2025-23949
@@ -107,9 +96,8 @@ dev = [
   # "wheel>=0.48.0",             # CVE-2025-24049
   # "pynacl>=1.6.2",             # CVE-2025-69277
   # "virtualenv>=21.14.13",      # CVE-2025-22702, CVE-2026-113722, CVE-2026-113713
-  # CVE-2026-112906/-112907/-112913/-112914/-112937/-112940, fixed in 4.2.1. filelock 4.2 needs
-  # Python 3.11, so the 3.10 fork keeps 4.1.0, the newest release that installs there.
-  "filelock>=4.2.12; python_version >= \"3.11\"",
+  # CVE-2026-112906/-112907/-112913/-112914/-112937/-112940, fixed in 4.2.1.
+  "filelock>=4.2.12",
 ]
 
 [project.scripts]
@@ -149,7 +137,7 @@ include = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py310"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = [
@@ -213,6 +201,7 @@ extraPaths = [
   "tests",
 ]
 executionEnvironments = [{root = "tests"}]
+pythonVersion = "3.14"
 
 [tool.pytest.ini_options]
 addopts = ["--doctest-modules"]
