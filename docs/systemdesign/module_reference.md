@@ -60,7 +60,7 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/application/linux_leaves.py`  -  sysfs leaves read and parsed one guarded file each; the ids, driver and DSN of a PCI function
 - `src/fingerprint_machine/application/linux_disks.py`  -  The Linux `disks` section: block devices, partitions and udev ids, NVMe, SCSI, FC and SAS controllers, their PCI ids and a PVSCSI sasWWID
 - `src/fingerprint_machine/application/linux_network.py`  -  The Linux `network` section: per interface sysfs, ethtool and rtnetlink, joined by interface index; DNS
-- `src/fingerprint_machine/application/readings.py`  -  Load and save readings, compare two files, check this machine against a baseline
+- `src/fingerprint_machine/application/readings.py`  -  Load and save readings (saved atomically, with the mode a plain write gives), compare two files, check this machine against a baseline
 
 ### Adapters Layer
 - `src/fingerprint_machine/adapters/config/loader.py`  -  Configuration loading with LRU caching
@@ -88,7 +88,7 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/adapters/windows/devnode.py`  -  ctypes calls into cfgmgr32: one device property of a device instance, present or not
 - `src/fingerprint_machine/adapters/windows/kernel.py`  -  ctypes calls: the NUMA nodes (kernel32) and the Kernel DMA Protection state (`NtQuerySystemInformation`)
 - `src/fingerprint_machine/adapters/windows/registry.py`  -  `LibRegistrySource`: registry through lib_registry (fake_winreg off Windows)
-- `src/fingerprint_machine/adapters/cpuid.py`  -  `NativeCpuid`: CPUID through a machine-code stub in an executable page (x86-64, Windows and Linux); `CpuidOff` for `--no-cpuid`
+- `src/fingerprint_machine/adapters/cpuid.py`  -  `NativeCpuid`: CPUID through a machine-code stub in an executable page (x86-64, Windows and Linux), every question pinned to the lowest-numbered allowed CPU; `CpuidOff` for `--no-cpuid`
 - `src/fingerprint_machine/adapters/linux/sysfs.py`  -  `FilesystemReader` (files under a root, typed failures) and `SysfsLinuxSource`, the real `LinuxSource`
 - `src/fingerprint_machine/adapters/linux/oserror.py`  -  `typed_os_error`: an `OSError` as `NeedsRootError`, `MissingPathError` or `SourceError`
 - `src/fingerprint_machine/adapters/linux/ethtool.py`  -  `ethtool_ioctl`: one `SIOCETHTOOL` request on an interface

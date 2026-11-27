@@ -11,6 +11,13 @@ and costs only the ``cpuid`` section. Endpoint security may still notice a proce
 executable memory; ``collect --no-cpuid`` (which wires :class:`CpuidOff`) avoids it entirely,
 because the page is mapped on the first question, never at construction.
 
+Every question runs on the same CPU: the lowest-numbered one the process may use, read on the
+first question. A hybrid CPU answers some leaves differently on a performance and an efficiency
+core (leaf 0x80000006 gives a different L2 size), so letting the scheduler pick the core made two
+readings of one machine differ, and a thread moved mid-section mixed two cores in one reading. The
+thread's own affinity is put back after each question; if the move is refused (a cpuset changed
+under the process), the question is still answered, on whichever CPU the thread is on.
+
 Contents:
     * :class:`NativeCpuid` - the CPU this process runs on.
     * :class:`CpuidOff` - a CPU that refuses every question (``--no-cpuid``).
@@ -20,15 +27,20 @@ from __future__ import annotations
 
 import ctypes
 import mmap
+import os
 import platform
 import sys
+from contextlib import contextmanager, nullcontext
 from typing import TYPE_CHECKING
 
 from ..domain.cpuid import CpuidRegs
 from ..domain.machine_errors import SourceError
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
+    from contextlib import AbstractContextManager
+
+    _Pinner = Callable[[], AbstractContextManager[None]]
 
 # Arguments arrive in EDI, ESI, RDX (System V: Linux) or ECX, EDX, R8 (Windows x64). Each stub
 # moves them to EAX (leaf), ECX (sub-leaf) and R8 (output), runs CPUID and stores the registers.
@@ -97,6 +109,59 @@ def _windows_page(code: bytes) -> int:
     return int(address)
 
 
+def _linux_pinner() -> _Pinner:
+    """Run each question on the lowest-numbered CPU this process may use."""
+    if sys.platform == "win32":  # narrows the Linux-only affinity calls for the type checker
+        raise SourceError("cpuid: sched_setaffinity is Linux")
+    target = {min(os.sched_getaffinity(0))}
+
+    @contextmanager
+    def pinned() -> Generator[None]:
+        # pid 0 is the calling thread for the Linux system call, so only this thread moves.
+        previous = os.sched_getaffinity(0)
+        try:
+            os.sched_setaffinity(0, target)
+        except OSError:
+            yield
+            return
+        try:
+            yield
+        finally:
+            os.sched_setaffinity(0, previous)
+
+    return pinned
+
+
+def _windows_pinner() -> _Pinner:
+    """Run each question on the lowest-numbered CPU in the process affinity mask."""
+    if sys.platform != "win32":  # narrows ctypes.WinDLL for the type checker
+        raise SourceError("cpuid: SetThreadAffinityMask needs Windows")
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+    kernel32.GetCurrentThread.restype = ctypes.c_void_p
+    kernel32.GetProcessAffinityMask.argtypes = [
+        ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t),
+    ]  # fmt: skip
+    kernel32.SetThreadAffinityMask.restype = ctypes.c_size_t
+    kernel32.SetThreadAffinityMask.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+    process, system = ctypes.c_size_t(0), ctypes.c_size_t(0)
+    if not kernel32.GetProcessAffinityMask(kernel32.GetCurrentProcess(), ctypes.byref(process), ctypes.byref(system)):
+        return nullcontext
+    target = process.value & -process.value
+
+    @contextmanager
+    def pinned() -> Generator[None]:
+        thread = kernel32.GetCurrentThread()
+        previous = kernel32.SetThreadAffinityMask(thread, target)  # 0 when refused: nothing to restore
+        try:
+            yield
+        finally:
+            if previous:
+                kernel32.SetThreadAffinityMask(thread, previous)
+
+    return pinned
+
+
 class NativeCpuid:
     """The CPUID of the CPU this process runs on.
 
@@ -110,21 +175,24 @@ class NativeCpuid:
         self._machine = (machine if machine is not None else platform.machine()).lower()
         self._system = system if system is not None else sys.platform
         self._stub: Callable[..., None] | None = None
+        self._pinned: _Pinner = nullcontext
 
     def _build(self) -> Callable[..., None]:
         if self._machine not in _X86_64:
             raise SourceError(f"cpuid needs an x86-64 CPU; this is {self._machine}")
         if self._system.startswith("linux"):
             address = _linux_page(_PROLOGUE_SYSV + _BODY)
+            self._pinned = _linux_pinner()
         elif self._system == "win32":
             address = _windows_page(_PROLOGUE_WIN64 + _BODY)
+            self._pinned = _windows_pinner()
         else:
             raise SourceError(f"cpuid is read on Windows or Linux only; this is {self._system}")
         stub: Callable[..., None] = _STUB_TYPE(address)
         return stub
 
     def cpuid(self, leaf: int, *, subleaf: int = 0) -> CpuidRegs:
-        """Run CPUID for ``leaf`` and ``subleaf`` on the CPU this thread is on.
+        """Run CPUID for ``leaf`` and ``subleaf`` on the lowest-numbered CPU the process may use.
 
         Raises:
             SourceError: not x86-64, not Windows or Linux, or the executable page was refused.
@@ -132,7 +200,8 @@ class NativeCpuid:
         if self._stub is None:
             self._stub = self._build()
         words = _Words()
-        self._stub(leaf, subleaf, ctypes.byref(words))
+        with self._pinned():
+            self._stub(leaf, subleaf, ctypes.byref(words))
         return CpuidRegs(eax=words[0], ebx=words[1], ecx=words[2], edx=words[3])
 
 

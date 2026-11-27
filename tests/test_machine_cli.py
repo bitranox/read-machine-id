@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -236,6 +238,30 @@ def test_collect_out_saves_the_bare_reading(tmp_path: Path) -> None:
     assert _obj(saved["meta"])["label"] == "vm-a"
     assert _obj(saved["meta"])["sections"] == ["smbios"]
     assert "network" not in saved
+
+
+@pytest.mark.os_agnostic
+def test_collect_out_writes_lf_line_endings_on_every_os(tmp_path: Path) -> None:
+    # On Windows a descriptor opened without O_BINARY turns each newline into CRLF.
+    target = tmp_path / "reading.json"
+    assert _run(["collect", "--section", "smbios", "--out", str(target)], _machine())[0] == 0
+    data = target.read_bytes()
+    assert b"\n" in data
+    assert b"\r\n" not in data
+
+
+@pytest.mark.os_posix
+def test_collect_out_creates_the_file_with_the_umask_mode_as_a_plain_write_does(tmp_path: Path) -> None:
+    # A temporary file is always created 0600; the saved reading must follow the umask instead,
+    # or a reading taken under sudo is unreadable to the user who asked for it.
+    target = tmp_path / "reading.json"
+    previous = os.umask(0o027)
+    try:
+        code, _ = _run(["collect", "--section", "smbios", "--out", str(target)], _machine())
+    finally:
+        os.umask(previous)
+    assert code == 0
+    assert stat.S_IMODE(target.stat().st_mode) == 0o640
 
 
 @pytest.mark.os_agnostic

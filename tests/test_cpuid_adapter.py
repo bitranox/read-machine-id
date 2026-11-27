@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import ctypes
+import os
 import platform
+import sys
 from pathlib import Path
 
 import pytest
@@ -63,3 +66,63 @@ def test_a_subleaf_reaches_the_cpu() -> None:
     if cpu.cpuid(0).eax < 0x0D or not cpu.cpuid(1).ecx >> 26 & 1:
         pytest.skip("no XSAVE leaf on this CPU")
     assert cpu.cpuid(0x0D) != cpu.cpuid(0x0D, subleaf=1)
+
+
+def _apic_id(cpu: NativeCpuid) -> int:
+    """The initial APIC id of the logical CPU that ran the instruction (leaf 1, EBX bits 31:24)."""
+    return cpu.cpuid(1).ebx >> 24
+
+
+@pytest.mark.os_linux
+@pytest.mark.skipif(not _X86_64, reason="CPUID exists only on x86")
+def test_every_leaf_is_read_on_the_lowest_allowed_cpu_and_the_thread_mask_is_kept() -> None:
+    # A hybrid CPU answers some leaves differently on a P-core and an E-core (the L2 size in
+    # 0x80000006), so where the scheduler happens to run the read must not decide the reading.
+    if sys.platform == "win32":
+        pytest.skip("sched_setaffinity is Linux")
+    allowed = os.sched_getaffinity(0)
+    if len(allowed) < 2:
+        pytest.skip("one CPU only")
+    lowest, highest = min(allowed), max(allowed)
+    cpu = NativeCpuid()
+    cpu.cpuid(0)  # the target CPU is fixed on the first question, asked here unrestricted
+    try:
+        os.sched_setaffinity(0, {lowest})
+        on_lowest = _apic_id(NativeCpuid())
+        os.sched_setaffinity(0, {highest})
+        assert _apic_id(cpu) == on_lowest
+        assert os.sched_getaffinity(0) == {highest}
+    finally:
+        os.sched_setaffinity(0, allowed)
+
+
+@pytest.mark.os_windows
+@pytest.mark.skipif(not _X86_64, reason="CPUID exists only on x86")
+def test_every_leaf_is_read_on_the_lowest_allowed_cpu_on_windows_and_the_thread_mask_is_kept() -> None:
+    if sys.platform != "win32":
+        pytest.skip("SetThreadAffinityMask is Windows")
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+    kernel32.GetCurrentThread.restype = ctypes.c_void_p
+    kernel32.GetProcessAffinityMask.argtypes = [
+        ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t),
+    ]  # fmt: skip
+    kernel32.SetThreadAffinityMask.restype = ctypes.c_size_t
+    kernel32.SetThreadAffinityMask.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+    process, system = ctypes.c_size_t(0), ctypes.c_size_t(0)
+    assert kernel32.GetProcessAffinityMask(kernel32.GetCurrentProcess(), ctypes.byref(process), ctypes.byref(system))
+    mask = process.value
+    if mask & (mask - 1) == 0:
+        pytest.skip("one CPU only")
+    lowest, highest = mask & -mask, 1 << (mask.bit_length() - 1)
+    thread = kernel32.GetCurrentThread()
+    cpu = NativeCpuid()
+    cpu.cpuid(0)  # the target CPU is fixed on the first question, asked here unrestricted
+    original = kernel32.SetThreadAffinityMask(thread, lowest)
+    try:
+        on_lowest = _apic_id(NativeCpuid())
+        kernel32.SetThreadAffinityMask(thread, highest)
+        assert _apic_id(cpu) == on_lowest
+        assert kernel32.SetThreadAffinityMask(thread, highest) == highest
+    finally:
+        kernel32.SetThreadAffinityMask(thread, original)

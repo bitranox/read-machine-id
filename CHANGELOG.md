@@ -136,6 +136,12 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   standard-library fallback are gone. The devcontainer uses the Python 3.15 image.
 - CI tests on Windows and Linux only; macOS is no longer tested. The package classifiers name
   Windows and Linux instead of "OS Independent".
+- A file saved with `--out` or `--save` gets the mode a plain write gives it (0666 less the
+  umask) instead of 0600, so a reading taken under `sudo` stays readable to the user.
+- Every CPUID question runs on the lowest-numbered CPU the process may use. On a hybrid CPU the
+  performance and efficiency cores answer some leaves differently (the L2 size in leaf
+  0x80000006), so two readings of one machine could differ, depending on where the scheduler
+  ran the read.
 
 ## [0.1.0] - 2026-11-27
 
