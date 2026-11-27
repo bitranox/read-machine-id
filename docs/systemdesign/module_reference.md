@@ -35,7 +35,7 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/application/collect.py`  -  Builds a reading: picks the OS by the sources given, reads the Windows sections, each question guarded, product keys masked
 - `src/fingerprint_machine/application/collect_linux.py`  -  The sections of a Linux reading
 - `src/fingerprint_machine/application/collect_cpuid.py`  -  The `cpuid` section on either OS: each leaf guarded, recorded raw, then decoded
-- `src/fingerprint_machine/application/linux_values.py`  -  Shared sysfs reads: `optional` (absent file is None), one-value files, link names, numeric directory names
+- `src/fingerprint_machine/application/linux_values.py`  -  `optional` (an absent file is None, any other refusal an error), integer files, link names, numeric directory names
 - `src/fingerprint_machine/application/linux_pci.py`  -  The Linux `pci` section: every device with its parent chain, ids, config space and interrupts; system interrupts, I/O and memory maps, DMA
 - `src/fingerprint_machine/application/linux_devices.py`  -  The Linux `devices` section: devices of the pci, usb, virtio, vmbus, scsi, input, platform and acpi buses, loaded modules, display EDIDs
 - `src/fingerprint_machine/application/readings.py`  -  Load and save readings, compare two files, check this machine against a baseline

@@ -22,11 +22,12 @@ from typing import TYPE_CHECKING
 
 from ..domain.interrupts import parse_interrupts
 from ..domain.kernel_tables import addresses_hidden, parse_dma, parse_resource_tree
-from ..domain.machine_errors import MissingPathError, NeedsRootError, SourceError
+from ..domain.machine_errors import NeedsRootError, SourceError
 from ..domain.pci_config import HEADER_BYTES, decode_capabilities, decode_header, walk_capabilities
 from ..domain.pci_sysfs import parse_pci_resources, pci_placement, slot_address
 from .guard import ANSWER_ERRORS, guarded
-from .linux_values import SMALL_FILE, int_value, link_name, numeric_names, optional, text_value
+from .linux_files import ATTRIBUTE_MAX_BYTES, optional_dir, text
+from .linux_values import int_value, link_name, numeric_names, optional
 
 if TYPE_CHECKING:
     from ..domain.interrupts import InterruptTable
@@ -90,7 +91,7 @@ class _Interrupts:
 
 
 def _text(system: LinuxSource, path: str) -> JsonValue:
-    return text_value(system, path)
+    return text(system, path)
 
 
 def _ids(system: LinuxSource, base: str) -> JsonObject:
@@ -106,7 +107,8 @@ def _placement(system: LinuxSource, address: str) -> JsonValue:
 
 
 def _resources(system: LinuxSource, base: str) -> JsonValue:
-    return [r.as_json() for r in parse_pci_resources(system.read_text(f"{base}/resource", max_bytes=SMALL_FILE))]
+    ranges = parse_pci_resources(system.read_text(f"{base}/resource", max_bytes=ATTRIBUTE_MAX_BYTES))
+    return [r.as_json() for r in ranges]
 
 
 def _capabilities(cfg: bytes, path: str) -> JsonValue:
@@ -207,14 +209,6 @@ def _slot(system: LinuxSource, name: str) -> JsonObject:
     }
 
 
-def _optional_dir(system: LinuxSource, path: str) -> list[str]:
-    """The names in a directory a machine may not have (no PCI bus, no hotplug slots): none then."""
-    try:
-        return system.list_dir(path)
-    except MissingPathError:
-        return []
-
-
 def _slot_names(slots: JsonValue) -> dict[str, str]:
     if not isinstance(slots, list):
         return {}
@@ -259,12 +253,12 @@ def read_pci(src: LinuxSources) -> JsonValue:
     """Read every PCI device one at a time, then the system's interrupts, I/O and memory maps."""
     system = src.system
     interrupts = _Interrupts(system)
-    slots = guarded(lambda: [_slot(system, name) for name in _optional_dir(system, _SLOTS)])
+    slots = guarded(lambda: [_slot(system, name) for name in optional_dir(system, _SLOTS)])
     names = _slot_names(slots)
     return {
         "devices": [
             guarded(lambda a=address: _device(system, interrupts, names, a))
-            for address in _optional_dir(system, _DEVICES)
+            for address in optional_dir(system, _DEVICES)
         ],
         "slots": slots,
         "interrupts": guarded(lambda: _counters(interrupts)),

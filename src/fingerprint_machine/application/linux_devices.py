@@ -22,7 +22,8 @@ from ..domain.edid import decode_edid
 from ..domain.kernel_tables import parse_modules
 from ..domain.machine_errors import MissingPathError
 from .guard import guarded
-from .linux_values import SMALL_FILE, link_name, optional, text_value
+from .linux_files import ATTRIBUTE_MAX_BYTES, optional_dir, text
+from .linux_values import link_name, optional
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -69,7 +70,7 @@ _ID_FILES: dict[DeviceBus, tuple[str, ...]] = {
 
 
 def _ids(system: LinuxSource, base: str, files: tuple[str, ...]) -> JsonObject:
-    found = {name: optional(lambda name=name: text_value(system, f"{base}/{name}")) for name in files}
+    found = {name: optional(lambda name=name: text(system, f"{base}/{name}")) for name in files}
     return {name: value for name, value in found.items() if value is not None}
 
 
@@ -79,7 +80,7 @@ def _instance(system: LinuxSource, bus: DeviceBus, name: str) -> JsonObject:
         "instance_id": f"{bus.value}/{name}",
         "bus": bus.value,
         "name": name,
-        "modalias": optional(lambda: text_value(system, f"{base}/modalias")),
+        "modalias": optional(lambda: text(system, f"{base}/modalias")),
         "driver": optional(lambda: link_name(system, f"{base}/driver")),
         "ids": _ids(system, base, _ID_FILES[bus]),
     }
@@ -87,10 +88,7 @@ def _instance(system: LinuxSource, bus: DeviceBus, name: str) -> JsonObject:
 
 def _names(system: LinuxSource, bus: DeviceBus) -> list[str]:
     """The devices on ``bus``: none when this machine does not have it."""
-    try:
-        names = system.list_dir(bus.directory)
-    except MissingPathError:
-        return []
+    names = optional_dir(system, bus.directory)
     return [n for n in names if n.startswith("input")] if bus is DeviceBus.INPUT else names
 
 
@@ -101,7 +99,7 @@ def _instances(system: LinuxSource) -> Iterator[JsonValue]:
 
 
 def _modules(system: LinuxSource) -> JsonValue:
-    return [m.as_json() for m in parse_modules(system.read_text("/proc/modules", max_bytes=SMALL_FILE * 16))]
+    return [m.as_json() for m in parse_modules(system.read_text("/proc/modules", max_bytes=ATTRIBUTE_MAX_BYTES))]
 
 
 def _edid(system: LinuxSource, path: str) -> JsonValue:
@@ -119,8 +117,8 @@ def _display(system: LinuxSource, connector: str) -> JsonObject | None:
         return None
     return {
         "connector": connector,
-        "status": optional(lambda: text_value(system, f"{base}/status")),
-        "enabled": optional(lambda: text_value(system, f"{base}/enabled")),
+        "status": optional(lambda: text(system, f"{base}/status")),
+        "enabled": optional(lambda: text(system, f"{base}/enabled")),
         "edid": guarded(lambda: _edid(system, f"{base}/edid")),
     }
 
