@@ -147,21 +147,22 @@ controller's PCI serial.
 
 The full sections follow the summary. `--section` reads any of them alone:
 
-| Section    | What it holds                                                                                                                                                                                         |
-|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `smbios`   | The raw SMBIOS table with every structure; BIOS, system, board, chassis, CPU, slots, memory, OEM strings and onboard devices decoded field by field                                                   |
-| `acpi`     | ACPI table headers (OEM ids), and whether an MSDM table holds a product key                                                                                                                           |
-| `platform` | BIOS, computer system (domain or workgroup included), product, baseboard and enclosure from WMI, and the BIOS and system values in the registry                                                       |
-| `cpu`      | Processors and caches                                                                                                                                                                                 |
-| `cpuid`    | The CPU's CPUID leaves (Windows and Linux): vendor, family, model, stepping, brand, feature flags, every hypervisor signature (`0x40000000` and the later bases), and each leaf read as raw registers |
-| `memory`   | Memory modules and arrays                                                                                                                                                                             |
-| `disks`    | Windows: disks, partitions, volumes, initiator ports with serials and GUIDs. Linux: each block device (VPD ids, queue, partitions, udev ids), NVMe, SCSI, FC and SAS controllers, PCI ids             |
-| `network`  | Windows: PCI location, driver settings, offloads, RSS, power, bindings, class key, addresses, routes, DNS. Linux: sysfs, ethtool (features, rings, link modes), netlink addresses, routes, neighbours |
-| `hardware` | SCSI, IDE and USB controllers, CD drives, keyboards, mice, sound, monitors, serial ports, video                                                                                                       |
-| `devices`  | Every device instance under the registry's `Enum` key, present or not, with hardware ids, location and driver                                                                                         |
-| `windows`  | Operating system, the `CurrentVersion` key, device id, MachineGuid, machine SID, TCP/IP names, time zone, licensing, hotfixes, cloud join                                                             |
-| `security` | TPM (WMI and TBS), cached EK certificates (public fields only), Secure Boot, Device Guard and VBS, BitLocker status                                                                                   |
-| `services` | Every service with its state and start mode                                                                                                                                                           |
+| Section | What it holds |
+|---|---|
+| `smbios` | The raw SMBIOS table with every structure; BIOS, system, board, chassis, CPU, slots, memory, OEM strings and onboard devices decoded field by field |
+| `acpi` | ACPI table headers (OEM ids), and whether an MSDM table holds a product key |
+| `platform` | BIOS, computer system (domain or workgroup included), product, baseboard and enclosure from WMI, and the BIOS and system values in the registry |
+| `cpu` | Windows: processors and caches from WMI, and every logical processor's registry description. Linux: `/proc/cpuinfo` per CPU, topology, caches, frequency, SMT, vulnerabilities |
+| `cpuid` | The CPU's CPUID leaves (Windows and Linux): vendor, family, model, stepping, brand, feature flags, every hypervisor signature (`0x40000000` and the later bases), and each leaf read as raw registers |
+| `memory` | Windows: memory modules and arrays, the totals, page files and their settings, NUMA nodes with their processors. Linux: meminfo, memory blocks, NUMA nodes, huge pages |
+| `disks` | Windows: disks, partitions, volumes, initiator ports with serials and GUIDs, and the SCSI device map with each unit's INQUIRY and VPD 0x83 ids. Linux: each block device (VPD ids, queue, partitions, udev ids), NVMe, SCSI, FC and SAS controllers, PCI ids |
+| `network` | Windows: PCI location, driver settings, offloads, RSS, power, bindings, class key, addresses, routes, DNS. Linux: sysfs, ethtool (features, rings, link modes), netlink addresses, routes, neighbours |
+| `pci` | Every PCI function with its address, ids, class, driver, Device Serial Number, parent and location paths, link speed and width, allocated ranges and interrupts (line-based and message-signaled); the system's interrupt, I/O port, memory and DMA tables |
+| `hardware` | SCSI, IDE and USB controllers, CD drives, keyboards, mice, sound, monitors, serial ports, video |
+| `devices` | Every device instance under the registry's `Enum` key, present or not, with hardware ids, location and driver; the installed kernel drivers; each monitor's EDID |
+| `windows` | Operating system, the `CurrentVersion` key, device id, MachineGuid, machine SID, TCP/IP names, time zone, licensing, hotfixes, cloud join |
+| `security` | TPM (WMI, TBS, the TPM service's values), cached EK certificates (public fields only), Secure Boot state, policy and servicing, Device Guard and VBS, BitLocker per volume and its policy, LSA protection, Kernel DMA Protection, Defender, firewall profiles, UAC, SmartScreen, Windows Update policy and results, Windows Hello policy, credential providers |
+| `services` | Every service with its state and start mode |
 
 A question that cannot be answered (a missing WMI class, access denied) is recorded as
 `{"error": "..."}` in its place and listed under `skipped`, and the reading goes on.
@@ -172,6 +173,7 @@ A question that cannot be answered (a missing WMI class, access denied) is recor
   `OA3xOriginalProductKey` value, the ACPI MSDM table, licensing data. `DigitalProductId` and
   `DigitalProductId4` are left out.
 - BitLocker: status and method only, never recovery keys or protectors.
+- TPM authorization values Windows may have cached in the registry are replaced by a placeholder.
 - EK certificates: subject, issuer, serial number, validity and thumbprints, not the certificate
   itself.
 

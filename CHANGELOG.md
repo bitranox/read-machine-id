@@ -62,11 +62,32 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   channels, coalescing, pause, wake-on-LAN as root) and the rtnetlink link, addresses, routes and
   neighbours joined to it by interface index; rows naming no interface under `unmatched`; DNS from
   `resolv.conf` and systemd-resolved. A netlink table is kept to 10000 rows.
+- Windows `pci`: every PCI function under `Enum\PCI`, present or not, under the Linux key names
+  (address `0000:bb:dd.f`, vendor, device, subsystem, revision, class code, driver, Device Serial
+  Number where the instance id is the device's own serial), its parent and location paths, link
+  speed and width and the other PCI device properties (through the configuration manager), the
+  memory, I/O and IRQ ranges Windows allocated to it, its line-based and message-signaled
+  interrupts and MSI settings; and system-wide the IRQ, I/O port, memory and DMA tables and the
+  PCI buses.
+- Windows `cpu.cpus`: every logical processor's registry description, in processor order.
+- Windows `memory`: the totals, the page files and their settings, and the NUMA nodes with their
+  processors.
+- Windows `disks.scsi`: the SCSI device map port by port down to each logical unit, its INQUIRY
+  answer decoded (vendor, model, rev, type) and its Device Identification page.
+- Windows `devices`: the installed kernel drivers (`Win32_SystemDriver`) and every monitor's EDID
+  decoded.
+- Windows `security`: Secure Boot policy and servicing state, the TPM service's values (a cached
+  TPM authorization value is withheld), BitLocker per volume and its policy (protector ids and
+  recovery material are never read), LSA protection, Kernel DMA Protection, Microsoft Defender,
+  the firewall profiles, UAC, SmartScreen, Windows Update policy and results, Windows Hello for
+  Business policy and the credential providers.
 
 ### Changed
 
 - Schema version 3. Compare marks fields only a schema 3 reading has as `newer-probe-only`
   against an older baseline.
+- Windows `cpu.registry` (processor 0 only) is replaced by `cpu.cpus`, one entry per logical
+  processor.
 - `collect` and `check` refuse with exit 2 only on an OS that is neither Windows nor Linux.
 - Python 3.15 or newer is required (3.10 to 3.14 are dropped); CI tests 3.15. orjson is
   a plain dependency that parses `--set` values on every interpreter; the `orjson` extra and the

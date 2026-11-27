@@ -31,6 +31,10 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/domain/interrupts.py`  -  `/proc/interrupts`: CPUs, numbered rows (chip, hwirq, trigger, actions, per-CPU counts) and named counters
 - `src/fingerprint_machine/domain/kernel_tables.py`  -  `/proc/iomem`, `/proc/ioports` (with the hidden-address check), `/proc/dma`, `/proc/modules`
 - `src/fingerprint_machine/domain/edid.py`  -  EDID base block: manufacturer, product code, serial, display name, date of manufacture (OS-neutral)
+- `src/fingerprint_machine/domain/windows_pci.py`  -  PCI ids from hardware ids, a PCI location from the registry text or the device address, the DSN in a unique instance id, IRQ numbers in either WMI spelling, interrupt support flags, WMI object paths
+- `src/fingerprint_machine/domain/devprops.py`  -  Device property keys (parent, location paths, bus number, address, the PCI device properties) and the decoder for each property type
+- `src/fingerprint_machine/domain/numa.py`  -  A NUMA node with its processor group and processors
+- `src/fingerprint_machine/domain/scsi_inquiry.py`  -  The standard SCSI INQUIRY answer: peripheral type and qualifier, removable bit, version, vendor, model, revision
 
 ### Application Layer
 - `src/fingerprint_machine/application/ports.py`  -  Callable Protocol definitions for adapter functions
@@ -40,6 +44,10 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/application/collect.py`  -  Builds a reading: picks the OS by the sources given, reads the Windows sections, each question guarded, product keys masked
 - `src/fingerprint_machine/application/collect_linux.py`  -  The sections of a Linux reading
 - `src/fingerprint_machine/application/collect_cpuid.py`  -  The `cpuid` section on either OS: each leaf guarded, recorded raw, then decoded
+- `src/fingerprint_machine/application/windows_values.py`  -  Registry and CIM reader helpers for the Windows sections: an absent key as None, reader factories
+- `src/fingerprint_machine/application/windows_pci.py`  -  The Windows `pci` section: every PCI function with its ids, place in the device tree, device properties, allocated ranges and interrupts; system interrupt, I/O, memory and DMA tables
+- `src/fingerprint_machine/application/windows_hardware.py`  -  Every processor's registry description, the NUMA nodes, the SCSI device map with decoded INQUIRY and VPD, every monitor's EDID
+- `src/fingerprint_machine/application/windows_security.py`  -  The Windows `security` section's items: Secure Boot, TPM, BitLocker, Device Guard, LSA, Kernel DMA Protection, Defender, firewall, UAC, SmartScreen, Windows Update, Hello, credential providers
 - `src/fingerprint_machine/application/linux_values.py`  -  `optional` (an absent file is None, any other refusal an error), integer files, link names, numeric directory names
 - `src/fingerprint_machine/application/linux_pci.py`  -  The Linux `pci` section: every device with its parent chain, ids, config space and interrupts; system interrupts, I/O and memory maps, DMA
 - `src/fingerprint_machine/application/linux_devices.py`  -  The Linux `devices` section: devices of the pci, usb, virtio, vmbus, scsi, input, platform and acpi buses, loaded modules, display EDIDs
@@ -71,6 +79,8 @@ moves or removes a module, a CLI option or a public name.
   - `machine_output.py`  -  JSON envelope, `--json-bare`, rich tables and `MachineExit` codes for the machine commands
 - `src/fingerprint_machine/adapters/windows/platform.py`  -  `PwshpyPlatformSource`: WMI/CIM through pwshpy, firmware tables
 - `src/fingerprint_machine/adapters/windows/firmware.py`  -  ctypes calls: `GetSystemFirmwareTable` (RSMB, ACPI), `GetFirmwareType`, `Tbsi_GetDeviceInfo`
+- `src/fingerprint_machine/adapters/windows/devnode.py`  -  ctypes calls into cfgmgr32: one device property of a device instance, present or not
+- `src/fingerprint_machine/adapters/windows/kernel.py`  -  ctypes calls: the NUMA nodes (kernel32) and the Kernel DMA Protection state (`NtQuerySystemInformation`)
 - `src/fingerprint_machine/adapters/windows/registry.py`  -  `LibRegistrySource`: registry through lib_registry (fake_winreg off Windows)
 - `src/fingerprint_machine/adapters/cpuid.py`  -  `NativeCpuid`: CPUID through a machine-code stub in an executable page (x86-64, Windows and Linux); `CpuidOff` for `--no-cpuid`
 - `src/fingerprint_machine/adapters/linux/sysfs.py`  -  `FilesystemReader` (files under a root, typed failures) and `SysfsLinuxSource`, the real `LinuxSource`
@@ -139,7 +149,10 @@ moves or removes a module, a CLI option or a public name.
 - `tests/test_registry_adapter.py`  -  `LibRegistrySource` over fake_winreg (POSIX only)
 - `tests/test_safe_console.py`  -  Legacy-codepage output tests, plus the guard forbidding direct `click.echo`
 - `tests/test_smbios_decode.py`  -  SMBIOS decoding from hand-built bytes, truncation, the RSMB header
-- `tests/test_windows_collect.py`  -  A real collect on Windows (Windows only)
+- `tests/test_windows_collect.py`  -  A real collect on Windows, its hardware and security sections, the configuration manager and kernel adapters (Windows only)
+- `tests/test_windows_decoders.py`  -  PCI ids and locations, WMI paths, device property types, INQUIRY answers, NUMA nodes from invented values
+- `tests/test_windows_sections.py`  -  The Windows pci, cpu, memory, disks, devices and security sections end to end on a recorded machine
+- `tests/windows_builder.py`  -  The recorded machine's Windows answers for those sections (PVSCSI and NIC functions, SCSI map, monitor, security keys)
 
 ---
 
