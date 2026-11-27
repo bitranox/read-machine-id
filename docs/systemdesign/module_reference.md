@@ -21,6 +21,11 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/domain/network.py`  -  Joins the per-adapter WMI classes and the network class key into one record per adapter
 - `src/fingerprint_machine/domain/summary.py`  -  The `summary` block of a reading
 - `src/fingerprint_machine/domain/compare.py`  -  Flatten, compare and score two readings; volatile and `newer-probe-only` rules
+- `src/fingerprint_machine/domain/pci_config.py`  -  PCI configuration space: the 64-byte header, the standard and extended capability walk, Device Serial Number, PCI Express port type and slot, MSI, MSI-X, AER, SR-IOV
+- `src/fingerprint_machine/domain/pci_sysfs.py`  -  A PCI device's place in the sysfs tree (root bus and parent bridges) and its `resource` ranges
+- `src/fingerprint_machine/domain/interrupts.py`  -  `/proc/interrupts`: CPUs, numbered rows (chip, hwirq, trigger, actions, per-CPU counts) and named counters
+- `src/fingerprint_machine/domain/kernel_tables.py`  -  `/proc/iomem`, `/proc/ioports` (with the hidden-address check), `/proc/dma`, `/proc/modules`
+- `src/fingerprint_machine/domain/edid.py`  -  EDID base block: manufacturer, product code, serial, display name, date of manufacture (OS-neutral)
 
 ### Application Layer
 - `src/fingerprint_machine/application/ports.py`  -  Callable Protocol definitions for adapter functions
@@ -30,6 +35,9 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/application/collect.py`  -  Builds a reading: picks the OS by the sources given, reads the Windows sections, each question guarded, product keys masked
 - `src/fingerprint_machine/application/collect_linux.py`  -  The sections of a Linux reading
 - `src/fingerprint_machine/application/collect_cpuid.py`  -  The `cpuid` section on either OS: each leaf guarded, recorded raw, then decoded
+- `src/fingerprint_machine/application/linux_values.py`  -  Shared sysfs reads: `optional` (absent file is None), one-value files, link names, numeric directory names
+- `src/fingerprint_machine/application/linux_pci.py`  -  The Linux `pci` section: every device with its parent chain, ids, config space and interrupts; system interrupts, I/O and memory maps, DMA
+- `src/fingerprint_machine/application/linux_devices.py`  -  The Linux `devices` section: devices of the pci, usb, virtio, vmbus, scsi, input, platform and acpi buses, loaded modules, display EDIDs
 - `src/fingerprint_machine/application/readings.py`  -  Load and save readings, compare two files, check this machine against a baseline
 
 ### Adapters Layer

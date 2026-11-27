@@ -40,6 +40,17 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 - Linux `services`: the guest agents (open-vm-tools, qemu-guest-agent, Hyper-V daemons, waagent,
   cloud-init, spice, VirtualBox, Xen, Google and Amazon agents) installed, enabled and running,
   and cloud-init's instance id.
+- Linux `pci`: every PCI device with its address, its parent chain from the root bus
+  (so the reading is a topology), ids, class, driver, IOMMU group, NUMA node, ACPI path, slot, bus
+  numbers, resource ranges, link speed and width, power state, the configuration space header and
+  (as root) the capability walk with the Device Serial Number, PCI Express port type, MSI, MSI-X,
+  AER and SR-IOV; per device its legacy IRQ and pin, MSI vectors, `/proc/interrupts` rows and CPU
+  affinity; and system-wide the interrupt descriptors, named interrupt counters, `/proc/ioports`,
+  `/proc/iomem` and DMA channels. Values only root can read are recorded as needing root.
+- Linux `devices`: every device on the pci, usb, virtio, vmbus, scsi, acpi and
+  platform buses and every input device, with modalias, driver and the bus's id files; the loaded
+  kernel modules; and the EDID of every display connector (manufacturer, product, serial, name,
+  date).
 
 ### Changed
 

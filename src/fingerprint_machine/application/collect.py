@@ -32,7 +32,7 @@ from ..domain.identity import (
     msdm_product_key,
     withhold_registry_values,
 )
-from ..domain.machine_errors import MissingKeyError
+from ..domain.machine_errors import MissingKeyError, SourceError
 from ..domain.network import BY_INDEX, BY_NAME, join_adapters
 from ..domain.smbios import decode_smbios
 from ..domain.summary import summarize
@@ -381,13 +381,20 @@ def read_section(src: WindowsSources, section: Section) -> JsonValue:
     whole = WHOLE_SECTIONS.get(section)
     if whole is not None:
         return guarded(lambda: whole(src))
-    return {name: guarded(lambda read=read: read(src)) for name, read in ITEM_SECTIONS[section].items()}
+    items = ITEM_SECTIONS.get(section)
+    if items is None:
+        return guarded(lambda: _not_read_on_windows(section))
+    return {name: guarded(lambda read=read: read(src)) for name, read in items.items()}
+
+
+def _not_read_on_windows(section: Section) -> JsonValue:
+    raise SourceError(f"the {section.value} section is not read on Windows yet")
 
 
 def default_sections(src: MachineSources) -> list[Section]:
     """Return the sections a reading of this machine holds when none are named, in document order."""
     if isinstance(src, WindowsSources):
-        return list(Section)
+        return [s for s in Section if s in WHOLE_SECTIONS or s in ITEM_SECTIONS]
     return [s for s in Section if s in LINUX_SECTIONS]
 
 

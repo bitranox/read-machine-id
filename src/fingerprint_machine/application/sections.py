@@ -24,6 +24,7 @@ class Section(StrEnum):
     MEMORY = "memory"
     DISKS = "disks"
     NETWORK = "network"
+    PCI = "pci"
     HARDWARE = "hardware"
     DEVICES = "devices"
     WINDOWS = "windows"
