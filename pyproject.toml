@@ -38,7 +38,6 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3.15",
-  "Programming Language :: Python :: Free Threading :: 2 - Beta",
   "License :: OSI Approved :: MIT License",
   "Environment :: Console",
   "Operating System :: OS Independent",
@@ -57,7 +56,7 @@ os = ["ubuntu-latest", "windows-latest", "macos-latest"]
 # bandit) publish no cp315t wheel, so that cell builds them from source and needs Rust and a C
 # compiler on the runner. A derived project opts in on its own: its dependencies need
 # free-threaded wheels, or a runner that can build them.
-free-threaded = ["3.14", "3.15"]
+free-threaded = [] # none: pwshpy and fake-winreg require orjson, which has no free-threaded build
 
 [project.urls]
 Homepage = "https://github.com/bitranox/read-machine-id"
