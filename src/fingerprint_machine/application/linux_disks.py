@@ -26,7 +26,7 @@ from ..domain.identity import vmware_pvscsi_sas_wwid_from_dsn
 from ..domain.vpd import decode_vpd_page80, decode_vpd_page83
 from .guard import guarded
 from .linux_files import optional_dir
-from .linux_leaves import Leaf, flag, integer, pci_function, read_leaves
+from .linux_leaves import Leaf, flag, integer, pci_function, read_leaves, serial_number
 from .linux_values import link_name, optional
 
 if TYPE_CHECKING:
@@ -203,18 +203,19 @@ def _class_devices(src: LinuxSource, device_class: str, leaves: Sequence[Leaf]) 
     return [guarded(lambda name=name: _class_device(src, f"{base}/{name}", leaves)) for name in optional_dir(src, base)]
 
 
-def _pvscsi_wwid(dsn: JsonValue) -> JsonValue:
-    if not isinstance(dsn, str):
+def _pvscsi_wwid(src: LinuxSource, address: str) -> JsonValue:
+    dsn = serial_number(src, address)
+    if dsn is None:
         return None
     vendor, device = (int(i, 16) for i in _PVSCSI)
-    return vmware_pvscsi_sas_wwid_from_dsn(vendor=vendor, device=device, dsn=int(dsn.replace("-", ""), 16))
+    return vmware_pvscsi_sas_wwid_from_dsn(vendor=vendor, device=device, dsn=dsn)
 
 
 def _controller(src: LinuxSource, address: str) -> JsonObject:
     """A storage controller's PCI ids; a PVSCSI controller also its sasWWID (None without a DSN)."""
     ids = pci_function(src, address)
     if (ids.get("vendor"), ids.get("device")) == _PVSCSI:
-        ids["sas_wwid"] = _pvscsi_wwid(ids.get("device_serial_number"))
+        ids["sas_wwid"] = guarded(lambda: _pvscsi_wwid(src, address))
     return ids
 
 

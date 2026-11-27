@@ -22,6 +22,8 @@ Contents:
     * :func:`decode_header` - the 64-byte header.
     * :func:`walk_capabilities` - follow both capability lists.
     * :func:`decode_capabilities` - the walk, plus the fields of the capabilities that identify.
+    * :func:`device_serial_number` - the Device Serial Number as a number.
+    * :func:`serial_number_text` - a Device Serial Number as lspci writes it.
 """
 
 from __future__ import annotations
@@ -317,11 +319,36 @@ def _first(caps: tuple[PciCapability, ...], cap_id: int) -> int | None:
     return next((c.offset for c in caps if c.cap_id == cap_id), None)
 
 
-def _dsn(cfg: bytes, offset: int | None) -> str | None:
-    value = None if offset is None else _uint(cfg, offset + 4, 8)
-    if value is None:
-        return None
+def _serial_at(cfg: bytes, offset: int | None) -> int | None:
+    return None if offset is None else _uint(cfg, offset + 4, 8)
+
+
+def device_serial_number(cfg: bytes) -> int | None:
+    """Return the Device Serial Number capability's 64-bit value; None when there is none.
+
+    A zero is a value the device reports, not an absent serial. A space cut to its header (an
+    unprivileged read) has no extended list to walk, so the caller tells that case apart.
+
+    Example:
+        >>> device_serial_number(bytes(4096)) is None
+        True
+    """
+    return _serial_at(cfg, _first(walk_capabilities(cfg).extended, _EXT_DSN))
+
+
+def serial_number_text(value: int) -> str:
+    """Return a Device Serial Number as lspci writes it, high byte first, dash-separated.
+
+    Example:
+        >>> serial_number_text(0x0050_56FF_FE12_3456)
+        '00-50-56-ff-fe-12-34-56'
+    """
     return "-".join(f"{b:02x}" for b in value.to_bytes(8, "big"))
+
+
+def _dsn(cfg: bytes, offset: int | None) -> str | None:
+    value = _serial_at(cfg, offset)
+    return None if value is None else serial_number_text(value)
 
 
 def _pcie(cfg: bytes, offset: int | None) -> JsonObject | None:
@@ -436,5 +463,7 @@ __all__ = [
     "PciePortType",
     "decode_capabilities",
     "decode_header",
+    "device_serial_number",
+    "serial_number_text",
     "walk_capabilities",
 ]

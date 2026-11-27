@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import pytest
-from pci_bytes import CAP_EXP, CAP_MSI, CAP_MSIX, CAP_PM, DSN_TEXT, Config, endpoint_config, root_port_config
+from pci_bytes import CAP_EXP, CAP_MSI, CAP_MSIX, CAP_PM, DSN_TEXT, DSN_VALUE, Config, endpoint_config, root_port_config
 
 from fingerprint_machine.domain.pci_config import (
     PciePortType,
     decode_capabilities,
     decode_header,
+    device_serial_number,
+    serial_number_text,
     walk_capabilities,
 )
 
@@ -185,3 +187,10 @@ def test_port_types_are_named_as_the_pcie_specification_numbers_them() -> None:
     assert PciePortType.from_number(4) is PciePortType.ROOT_PORT
     assert PciePortType.from_number(6) is PciePortType.DOWNSTREAM_PORT
     assert PciePortType.from_number(11) is None
+
+
+@pytest.mark.os_agnostic
+def test_the_device_serial_number_is_a_number_and_its_text_is_the_lspci_form() -> None:
+    assert device_serial_number(endpoint_config().bytes()) == DSN_VALUE
+    assert device_serial_number(root_port_config().bytes()) is None
+    assert serial_number_text(DSN_VALUE) == DSN_TEXT

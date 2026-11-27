@@ -12,6 +12,7 @@ Contents:
     * :func:`stripped`, :func:`integer`, :func:`flag` - the parsers.
     * :func:`read_leaves` - every listed leaf a directory holds, each guarded.
     * :func:`pci_function` - the ids, driver and Device Serial Number of one PCI function.
+    * :func:`serial_number` - a PCI function's Device Serial Number as a number.
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from ..domain.machine_errors import NeedsRootError
-from ..domain.pci_config import HEADER_BYTES, decode_capabilities, walk_capabilities
+from ..domain.pci_config import HEADER_BYTES, device_serial_number, serial_number_text, walk_capabilities
 from .guard import guarded
 from .linux_files import ATTRIBUTE_MAX_BYTES
 from .linux_values import link_name, optional
@@ -91,14 +92,23 @@ _PCI_IDS = tuple(
 )
 
 
-def _serial_number(src: LinuxSource, directory: str) -> JsonValue:
-    """The DSN as the ``pci`` section writes it (``01-23-...``); None for a function without one."""
-    path = f"{directory}/config"
+def serial_number(src: LinuxSource, address: str) -> int | None:
+    """Return a PCI function's Device Serial Number; None when it has none.
+
+    Raises:
+        NeedsRootError: the read stopped at the header (unprivileged), before the capabilities.
+        SourceError: the configuration space cannot be read.
+    """
+    path = f"/sys/bus/pci/devices/{address}/config"
     config = src.read_bytes(path, max_bytes=_CONFIG_BYTES)
-    walk = walk_capabilities(config)
-    if walk.unread_at is not None and len(config) <= HEADER_BYTES:
+    if walk_capabilities(config).unread_at is not None and len(config) <= HEADER_BYTES:
         raise NeedsRootError(f"{path}: the capabilities lie past the {len(config)} bytes read; only root reads them")
-    return decode_capabilities(config, walk).get("device_serial_number")
+    return device_serial_number(config)
+
+
+def _serial_text(src: LinuxSource, address: str) -> JsonValue:
+    value = serial_number(src, address)
+    return None if value is None else serial_number_text(value)
 
 
 def pci_function(src: LinuxSource, address: str) -> JsonObject:
@@ -116,8 +126,8 @@ def pci_function(src: LinuxSource, address: str) -> JsonObject:
         "address": address,
         **read_leaves(src, directory, _PCI_IDS),
         "driver": optional(lambda: link_name(src, f"{directory}/driver")),
-        "device_serial_number": guarded(lambda: _serial_number(src, directory)),
+        "device_serial_number": guarded(lambda: _serial_text(src, address)),
     }
 
 
-__all__ = ["Leaf", "flag", "integer", "pci_function", "read_leaves", "stripped"]
+__all__ = ["Leaf", "flag", "integer", "pci_function", "read_leaves", "serial_number", "stripped"]
