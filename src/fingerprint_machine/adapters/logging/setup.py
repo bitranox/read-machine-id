@@ -270,14 +270,11 @@ def _nearest_dotenv() -> Path | None:
 def _dotenv_in(directory: Path) -> Path | None:
     """The ``.env`` file in ``directory``, or None.
 
-    A directory that cannot be read has none: Python before 3.14 raises for a path behind a
-    directory without search permission instead of answering False.
+    A directory that cannot be read has none: ``Path.is_file`` answers False for a path behind a
+    directory without search permission.
     """
-    try:
-        candidate = directory / ".env"
-        return candidate if candidate.is_file() else None
-    except OSError:
-        return None
+    candidate = directory / ".env"
+    return candidate if candidate.is_file() else None
 
 
 def _load_log_variables(config: Config, dotenv_path: str | None) -> None:

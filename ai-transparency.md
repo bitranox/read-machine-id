@@ -41,7 +41,7 @@ mode, the import-linter layer contracts, Bandit, pip-audit, and Pytest with cove
 the doctests in the source modules. The tests replay a recorded synthetic machine through the real
 CLI, and one test reads the CI's own Windows runner for real. A planted product key proves that no
 full key reaches the output. CI runs on Linux and Windows under
-Python 3.14 and 3.15. The badges at the top of the README report the live state.
+Python 3.15. The badges at the top of the README report the live state.
 
 ## Checking it yourself
 

@@ -25,9 +25,9 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 - Schema version 3. Compare marks fields only a schema 3 reading has as `newer-probe-only`
   against an older baseline.
 - `collect` and `check` refuse with exit 2 only on an OS that is neither Windows nor Linux.
-- Python 3.14 or newer is required (3.10 to 3.13 are dropped); CI tests 3.14 and 3.15. orjson is
+- Python 3.15 or newer is required (3.10 to 3.14 are dropped); CI tests 3.15. orjson is
   a plain dependency that parses `--set` values on every interpreter; the `orjson` extra and the
-  standard-library fallback are gone.
+  standard-library fallback are gone. The devcontainer uses the Python 3.15 image.
 - CI tests on Windows and Linux only; macOS is no longer tested. The package classifiers name
   Windows and Linux instead of "OS Independent".
 

@@ -3,7 +3,7 @@ name = "fingerprint-machine"
 version = "0.1.0"
 description = "Read a Windows machine's identity (SMBIOS, NICs, serials, TPM, licensing) as JSON and compare readings"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = [
     "rich-click>=1.9.9",
     # Imported directly (adapters/cli/main.py, commands/config.py), not only through rich-click.
@@ -29,7 +29,6 @@ keywords = ["windows", "smbios", "hardware-inventory", "machine-identity", "tpm"
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3.15",
   "License :: OSI Approved :: MIT License",
   "Environment :: Console",
@@ -137,7 +136,7 @@ include = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py314"
+target-version = "py315"
 
 [tool.ruff.lint]
 select = [
@@ -201,7 +200,7 @@ extraPaths = [
   "tests",
 ]
 executionEnvironments = [{root = "tests"}]
-pythonVersion = "3.14"
+pythonVersion = "3.15"
 
 [tool.pytest.ini_options]
 addopts = ["--doctest-modules"]

@@ -562,3 +562,26 @@ def test_the_subprocess_reads_the_redirected_app_layer_not_the_host_s(
 
     assert result.returncode == 0, result.stderr
     assert "redirected app layer" in result.stdout, result.stdout
+
+
+@pytest.mark.os_posix
+def test_the_dotenv_walk_passes_over_a_directory_it_cannot_search(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, log_variables: list[str]
+) -> None:
+    """A ``.env`` behind a directory without search permission is not there; the walk goes on up."""
+    if sys.platform != "win32" and os.geteuid() == 0:
+        pytest.skip("root searches every directory")
+    log_variables.append("LOG_WALK_PROBE")
+    (tmp_path / ".env").write_text("LOG_WALK_PROBE=outer\n", encoding="utf-8")
+    locked = tmp_path / "locked"
+    inner = locked / "inner"
+    inner.mkdir(parents=True)
+    (locked / ".env").write_text("LOG_WALK_PROBE=locked\n", encoding="utf-8")
+    monkeypatch.chdir(inner)
+    locked.chmod(0o600)
+    try:
+        init_logging(Config({}, {}))
+    finally:
+        locked.chmod(0o700)
+
+    assert os.environ.get("LOG_WALK_PROBE") == "outer"
