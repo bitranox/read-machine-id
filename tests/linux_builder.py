@@ -34,7 +34,8 @@ def write_linux_tree(root: Path) -> Path:
     for relative, content in _FILES.items():
         target = root / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content, encoding="utf-8")
+        # Bytes, not write_text: on Windows write_text turns each newline into CRLF.
+        target.write_bytes(content.encode("utf-8"))
     return root
 
 

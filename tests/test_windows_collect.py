@@ -1,12 +1,14 @@
 """A real collection on a real Windows machine (the CI Windows runner, or a developer's box).
 
 A runner is a VM whose TPM, BitLocker and licensing answers vary, so this asserts only what every
-Windows machine has: SMBIOS, the operating system and at least one network adapter.
+Windows machine has: SMBIOS, the operating system, at least one network adapter, and on x86-64 a
+CPU vendor read through CPUID.
 """
 
 from __future__ import annotations
 
 import json
+import platform
 
 import pytest
 from click.testing import CliRunner
@@ -26,3 +28,6 @@ def test_collect_reads_this_windows_machine() -> None:
     assert reading["smbios"]["type_counts"]
     assert reading["windows"]["operating_system"][0]["Caption"]
     assert reading["network"]["adapters"]
+    assert reading["meta"]["os"] == "windows"
+    if platform.machine().lower() in {"amd64", "x86_64"}:
+        assert len(reading["cpuid"]["vendor"]) == 12

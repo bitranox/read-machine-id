@@ -25,7 +25,8 @@ if TYPE_CHECKING:
 
 def _tree(root: Path) -> FilesystemReader:
     (root / "sys/class/net/eth0").mkdir(parents=True)
-    (root / "sys/class/net/eth0/address").write_text("02:00:00:00:00:01\n", encoding="utf-8")
+    # Bytes, not write_text: Windows would write the newline as CRLF and no sysfs file holds one.
+    (root / "sys/class/net/eth0/address").write_bytes(b"02:00:00:00:00:01\n")
     (root / "sys/class/net/lo").mkdir()
     (root / "proc").mkdir()
     (root / "proc/big").write_bytes(b"x" * 100)
