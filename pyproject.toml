@@ -1,6 +1,6 @@
 [project]
 name = "fingerprint-machine"
-version = "0.1.0"
+version = "0.2.0"
 description = "Read a Windows machine's identity (SMBIOS, NICs, serials, TPM, licensing) as JSON and compare readings"
 readme = "README.md"
 requires-python = ">=3.15"

@@ -40,7 +40,7 @@ name = "fingerprint-machine"
 #: Human-readable summary shown in CLI help output.
 title = "Read a Windows machine's identity (SMBIOS, NICs, serials, TPM, licensing) as JSON and compare readings"
 #: Current release version pulled from ``pyproject.toml`` by automation.
-version = "0.1.0"
+version = "0.2.0"
 #: Repository homepage presented to users.
 homepage = "https://github.com/bitranox/fingerprint-machine"
 #: Author attribution surfaced in CLI output.
