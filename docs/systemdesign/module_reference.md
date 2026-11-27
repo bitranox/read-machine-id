@@ -16,6 +16,11 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/domain/machine_errors.py`  -  `SourceError`, `MissingKeyError`, `MissingPathError`, `NeedsRootError`, `UnsupportedPlatformError`, `NotAReadingError`
 - `src/fingerprint_machine/domain/smbios.py`  -  SMBIOS (DSP0134) parser and per-type decoders; `split_raw_smbios` for the RSMB block
 - `src/fingerprint_machine/domain/identity.py`  -  PCI instance serials, VMware PVSCSI SAS WWID, product-key masking, withheld registry values, machine SID, ACPI/MSDM, TBS device info
+- `src/fingerprint_machine/domain/vpd.py`  -  SCSI VPD pages 0x80 (unit serial) and 0x83 (device identification designators)
+- `src/fingerprint_machine/domain/blockdev.py`  -  I/O scheduler line, udev database record, the PCI addresses in a sysfs device path
+- `src/fingerprint_machine/domain/ethtool.py`  -  ethtool ioctl requests and their decoders (driver info, permanent address, string sets, features, link settings, rings, channels, coalescing, pause, wake-on-LAN)
+- `src/fingerprint_machine/domain/netlink.py`  -  rtnetlink dump requests, message splitting, link, address, route and neighbour decoders
+- `src/fingerprint_machine/domain/resolv.py`  -  `resolv.conf` parser
 - `src/fingerprint_machine/domain/cpuid.py`  -  CPUID registers and queries, which leaves to ask next, and the decoder (vendor, signature, brand, feature names, hypervisor bases)
 - `src/fingerprint_machine/domain/certificates.py`  -  EK certificate from a registry store blob; public fields only
 - `src/fingerprint_machine/domain/network.py`  -  Joins the per-adapter WMI classes and the network class key into one record per adapter
@@ -38,6 +43,9 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/application/linux_values.py`  -  `optional` (an absent file is None, any other refusal an error), integer files, link names, numeric directory names
 - `src/fingerprint_machine/application/linux_pci.py`  -  The Linux `pci` section: every device with its parent chain, ids, config space and interrupts; system interrupts, I/O and memory maps, DMA
 - `src/fingerprint_machine/application/linux_devices.py`  -  The Linux `devices` section: devices of the pci, usb, virtio, vmbus, scsi, input, platform and acpi buses, loaded modules, display EDIDs
+- `src/fingerprint_machine/application/linux_leaves.py`  -  sysfs leaves read and parsed one guarded file each; the ids, driver and DSN of a PCI function
+- `src/fingerprint_machine/application/linux_disks.py`  -  The Linux `disks` section: block devices, partitions and udev ids, NVMe, SCSI, FC and SAS controllers, their PCI ids and a PVSCSI sasWWID
+- `src/fingerprint_machine/application/linux_network.py`  -  The Linux `network` section: per interface sysfs, ethtool and rtnetlink, joined by interface index; DNS
 - `src/fingerprint_machine/application/readings.py`  -  Load and save readings, compare two files, check this machine against a baseline
 
 ### Adapters Layer
@@ -66,6 +74,9 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/adapters/windows/registry.py`  -  `LibRegistrySource`: registry through lib_registry (fake_winreg off Windows)
 - `src/fingerprint_machine/adapters/cpuid.py`  -  `NativeCpuid`: CPUID through a machine-code stub in an executable page (x86-64, Windows and Linux); `CpuidOff` for `--no-cpuid`
 - `src/fingerprint_machine/adapters/linux/sysfs.py`  -  `FilesystemReader` (files under a root, typed failures) and `SysfsLinuxSource`, the real `LinuxSource`
+- `src/fingerprint_machine/adapters/linux/oserror.py`  -  `typed_os_error`: an `OSError` as `NeedsRootError`, `MissingPathError` or `SourceError`
+- `src/fingerprint_machine/adapters/linux/ethtool.py`  -  `ethtool_ioctl`: one `SIOCETHTOOL` request on an interface
+- `src/fingerprint_machine/adapters/linux/netlink.py`  -  `netlink_dump`: an rtnetlink dump, yielded one message at a time
 - `src/fingerprint_machine/adapters/fixture.py`  -  `FixtureSources` (Windows) and `FixtureLinuxSource` (a directory mirroring `/` plus a JSON document): replay a recorded machine (the test seam)
 
 ### Adapters Layer (In-Memory / Testing)

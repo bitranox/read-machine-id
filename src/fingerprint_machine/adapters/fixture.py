@@ -27,11 +27,16 @@ A recorded Linux machine is a directory that mirrors ``/`` (``sys/``, ``proc/``,
       "cpuid":   {...as above...},
       "ethtool": {"<ifname>": {"<request hex>": "<answer hex>"}},
       "netlink": {"<links|addresses|routes|neighbours>": ["<message hex>", ...]},
-      "tpm_nv":  {"0x<index, 8 hex digits>": "<content hex>"}
+      "tpm_nv":  {"0x<index, 8 hex digits>": "<content hex>"},
+      "links":   {"<absolute path>": "<link target, as the link writes it>"}
     }
 
 A TPM NV index the ``tpm_nv`` block lacks answers as a TPM answers an index it does not define
 (:class:`TpmResponseError` ``0x18b``).
+
+``links`` stands in for the symbolic links sysfs is full of, so a recorded tree can use plain
+directories (a Windows test run may not create links); a path it does not name is read as a real
+link under the root.
 
 Contents:
     * :class:`FixtureSources` - :class:`PlatformSource`, :class:`RegistrySource` and
@@ -52,7 +57,7 @@ from ..domain.tpm2 import TpmResponseError
 from .linux.sysfs import FilesystemReader
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterator, Mapping
     from pathlib import Path
 
     from ..application.machine_ports import NetlinkDump, RegistryData
@@ -182,6 +187,7 @@ class FixtureLinuxSource(FilesystemReader):
         self._ethtool = _obj(answers.get("ethtool", {}), "ethtool")
         self._netlink = _obj(answers.get("netlink", {}), "netlink")
         self._tpm_nv = _obj(answers.get("tpm_nv", {}), "tpm_nv")
+        self._links = _obj(answers.get("links", {}), "links")
 
     def cpuid(self, leaf: int, *, subleaf: int = 0) -> CpuidRegs:
         """Return the recorded registers of one leaf (zeros when unrecorded)."""
@@ -195,12 +201,17 @@ class FixtureLinuxSource(FilesystemReader):
             raise SourceError(f"ethtool {ifname} {request.hex()}: not recorded")
         return bytes.fromhex(answer)
 
-    def netlink_dump(self, table: NetlinkDump) -> list[bytes]:
+    def netlink_dump(self, table: NetlinkDump) -> Iterator[bytes]:
         """Return the recorded messages of one rtnetlink dump."""
         messages = self._netlink.get(table.value)
         if not isinstance(messages, list):
             raise SourceError(f"netlink {table.value}: not recorded")
-        return [bytes.fromhex(m) for m in messages if isinstance(m, str)]
+        return iter([bytes.fromhex(m) for m in messages if isinstance(m, str)])
+
+    def readlink(self, path: str) -> str:
+        """Return the recorded target of a link, else the target of a real link under the root."""
+        target = self._links.get(path)
+        return target if isinstance(target, str) else super().readlink(path)
 
     def tpm_nv_read(self, index: int) -> bytes:
         """Return the recorded content of one TPM NV index; an unrecorded one is not defined."""

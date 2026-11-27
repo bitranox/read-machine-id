@@ -15,7 +15,9 @@ import pytest
 from fingerprint_machine.adapters.fixture import FixtureLinuxSource
 from fingerprint_machine.adapters.linux.sysfs import FilesystemReader, SysfsLinuxSource
 from fingerprint_machine.application.machine_ports import NetlinkDump
+from fingerprint_machine.domain.ethtool import driver_info_request
 from fingerprint_machine.domain.machine_errors import MissingPathError, NeedsRootError, SourceError
+from fingerprint_machine.domain.netlink import decode_link
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -88,12 +90,19 @@ def test_a_file_only_root_may_read_needs_root(tmp_path: Path) -> None:
 
 
 @pytest.mark.os_agnostic
-def test_the_real_source_has_no_kernel_interfaces_yet() -> None:
+def test_the_real_source_refuses_an_overlong_interface_name() -> None:
+    with pytest.raises(SourceError, match="longer than 15 bytes"):
+        SysfsLinuxSource().ethtool("x" * 16, request=bytes(8))
+
+
+@pytest.mark.os_linux
+def test_the_real_source_dumps_the_links_and_asks_the_loopback_driver() -> None:
     source = SysfsLinuxSource()
-    with pytest.raises(SourceError, match="not implemented"):
-        source.ethtool("eth0", request=bytes(8))
-    with pytest.raises(SourceError, match="not implemented"):
-        source.netlink_dump(NetlinkDump.LINKS)
+    names = [str(decode_link(message).get("name")) for message in source.netlink_dump(NetlinkDump.LINKS)]
+    assert "lo" in names
+    # The loopback has no driver to describe itself: the kernel answers EOPNOTSUPP.
+    with pytest.raises(SourceError, match=r"ENOTSUP|EOPNOTSUPP"):
+        source.ethtool("lo", request=driver_info_request())
 
 
 @pytest.mark.os_agnostic
@@ -105,9 +114,19 @@ def test_the_fixture_answers_kernel_interfaces_from_its_document(tmp_path: Path)
     }
     source = FixtureLinuxSource(tmp_path, answers)
     assert source.ethtool("eth0", request=bytes.fromhex("0b000000")) == bytes.fromhex("0b000000ffff")
-    assert source.netlink_dump(NetlinkDump.LINKS) == [b"\x01\x02", b"\x03\x04"]
+    assert list(source.netlink_dump(NetlinkDump.LINKS)) == [b"\x01\x02", b"\x03\x04"]
     assert source.tpm_nv_read(0x01C00002) == b"\x30\x82"
     with pytest.raises(SourceError, match="not recorded"):
         source.netlink_dump(NetlinkDump.ROUTES)
     with pytest.raises(SourceError, match="not recorded"):
         source.ethtool("eth1", request=bytes(4))
+
+
+@pytest.mark.os_agnostic
+def test_the_fixture_answers_a_recorded_link_without_a_real_one(tmp_path: Path) -> None:
+    _tree(tmp_path)
+    target = "../../devices/pci0000:00/0000:00:03.0/net/eth0"
+    source = FixtureLinuxSource(tmp_path, {"links": {"/sys/class/net/eth0": target}})
+    assert source.readlink("/sys/class/net/eth0") == target
+    with pytest.raises(SourceError, match="not a link"):
+        source.readlink("/sys/class/net/eth0/address")

@@ -51,6 +51,17 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   platform buses and every input device, with modalias, driver and the bus's id files; the loaded
   kernel modules; and the EDID of every display connector (manufacturer, product, serial, name,
   date).
+- Linux `disks`: every block device with its size, queue limits, I/O scheduler, the identity its
+  device reports (vendor, model, serial, WWID, VPD pages 0x80 and 0x83 decoded), the PCI controller
+  and bridges above it, its partitions and what udev recorded for them (filesystem UUID and label,
+  partition UUID); NVMe controllers and namespaces, SCSI hosts, Fibre Channel and SAS ports, each
+  controller's PCI ids and Device Serial Number (root), and for a VMware PVSCSI controller the
+  `sas_wwid` that serial encodes.
+- Linux `network`: per interface the sysfs values, the PCI function behind it with its serial,
+  every ethtool answer (driver, burned-in address, each offload feature, link modes, rings,
+  channels, coalescing, pause, wake-on-LAN as root) and the rtnetlink link, addresses, routes and
+  neighbours joined to it by interface index; rows naming no interface under `unmatched`; DNS from
+  `resolv.conf` and systemd-resolved. A netlink table is kept to 10000 rows.
 
 ### Changed
 

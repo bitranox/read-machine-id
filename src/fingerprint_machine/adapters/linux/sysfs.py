@@ -18,28 +18,18 @@ from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
 
 from ...application.machine_ports import DEFAULT_MAX_BYTES
-from ...domain.machine_errors import MissingPathError, NeedsRootError, SourceError
+from ...domain.machine_errors import SourceError
+from .ethtool import ethtool_ioctl
+from .netlink import netlink_dump
+from .oserror import typed_os_error
 from .tpm import TPM_DEVICE, device_transport, read_nv_index
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
     from ...application.machine_ports import NetlinkDump
 
 _T = TypeVar("_T")
-_ROOT_ONLY = frozenset({errno.EACCES, errno.EPERM})
-_MISSING = frozenset({errno.ENOENT, errno.ENOTDIR})
-
-
-def _typed(path: str, exc: OSError) -> SourceError:
-    """The error a refused filesystem call is reported as."""
-    code = exc.errno or 0
-    name = errno.errorcode.get(code, str(code))
-    if code in _ROOT_ONLY:
-        return NeedsRootError(f"{path}: needs root ({name})")
-    if code in _MISSING:
-        return MissingPathError(f"{path}: does not exist ({name})")
-    return SourceError(f"{path}: {name} {exc.strerror or ''}".rstrip())
 
 
 class FilesystemReader:
@@ -58,7 +48,7 @@ class FilesystemReader:
         try:
             return action(self._local(path))
         except OSError as exc:
-            raise _typed(path, exc) from exc
+            raise typed_os_error(path, exc) from exc
 
     def read_bytes(self, path: str, *, max_bytes: int = DEFAULT_MAX_BYTES) -> bytes:
         """Return a file's content; refuse one larger than ``max_bytes`` without reading it whole."""
@@ -97,28 +87,23 @@ class FilesystemReader:
         except OSError as exc:
             if exc.errno == errno.EINVAL:  # the path exists and is not a link
                 raise SourceError(f"{path}: not a link") from exc
-            raise _typed(path, exc) from exc
-
-
-def _not_yet(what: str) -> SourceError:
-    return SourceError(f"{what}: not implemented yet")
+            raise typed_os_error(path, exc) from exc
 
 
 class SysfsLinuxSource(FilesystemReader):
-    """The real machine's files under ``/`` and its TPM; ethtool and netlink come in a later version."""
+    """The real machine: files under ``/``, the ethtool ioctl, rtnetlink and the TPM."""
 
     def __init__(self, root: Path | None = None) -> None:
         """Read the machine this runs on (``root`` exists for tests)."""
         super().__init__(root if root is not None else Path("/"))
 
     def ethtool(self, ifname: str, *, request: bytes) -> bytes:
-        """Refuse: the ethtool ioctl is not wired yet."""
-        del request
-        raise _not_yet(f"ethtool {ifname}")
+        """Run one ethtool request on ``ifname`` (see :func:`ethtool_ioctl`)."""
+        return ethtool_ioctl(ifname, request)
 
-    def netlink_dump(self, table: NetlinkDump) -> list[bytes]:
-        """Refuse: the netlink dump is not wired yet."""
-        raise _not_yet(f"netlink {table.value}")
+    def netlink_dump(self, table: NetlinkDump) -> Iterator[bytes]:
+        """Yield every message of one rtnetlink dump (see :func:`netlink_dump`)."""
+        return netlink_dump(table)
 
     def tpm_nv_read(self, index: int) -> bytes:
         """Return the content of a TPM NV index, read through the resource manager device."""

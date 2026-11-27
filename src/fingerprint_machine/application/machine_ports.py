@@ -30,7 +30,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterator, Mapping
 
     from ..domain.cpuid import CpuidRegs
     from ..domain.json_types import JsonObject
@@ -187,11 +187,11 @@ class LinuxSource(Protocol):
         """
         ...
 
-    def netlink_dump(self, table: NetlinkDump) -> list[bytes]:
-        """Return every message of an rtnetlink dump of ``table``.
+    def netlink_dump(self, table: NetlinkDump) -> Iterator[bytes]:
+        """Yield every message of an rtnetlink dump of ``table``, one at a time, header included.
 
         Raises:
-            SourceError: the dump is refused.
+            SourceError: the dump is refused (raised when the iteration reaches the refusal).
         """
         ...
 

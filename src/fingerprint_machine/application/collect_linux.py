@@ -18,8 +18,10 @@ from .collect_cpuid import read_cpuid
 from .guard import guarded
 from .linux_cpu import read_linux_cpu
 from .linux_devices import read_devices
+from .linux_disks import read_linux_disks
 from .linux_firmware_tables import read_linux_acpi, read_linux_smbios
 from .linux_memory import read_linux_memory
+from .linux_network import read_linux_network
 from .linux_pci import read_pci
 from .linux_platform import read_linux_platform
 from .linux_security import read_linux_security
@@ -40,6 +42,8 @@ LINUX_SECTIONS: Mapping[Section, Callable[[LinuxSources], JsonValue]] = {
     Section.PLATFORM: read_linux_platform,
     Section.CPU: read_linux_cpu,
     Section.MEMORY: read_linux_memory,
+    Section.DISKS: read_linux_disks,
+    Section.NETWORK: read_linux_network,
     Section.SECURITY: read_linux_security,
     Section.SERVICES: read_linux_services,
     Section.PCI: read_pci,

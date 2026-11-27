@@ -3,6 +3,7 @@
 Contents:
     * :func:`instance_serial` - the serial number part of a PnP instance id.
     * :func:`vmware_pvscsi_sas_wwid` - a VMware PVSCSI controller's sasWWID from its PCI serial.
+    * :func:`vmware_pvscsi_sas_wwid_from_dsn` - the same, from PCI ids and a DSN (Linux).
     * :func:`mask_product_keys` - replace every product key in a JSON tree by its last 5 characters.
     * :func:`withhold_registry_values` - drop registry values that encode a product key.
     * :func:`machine_sid` - the machine SID from local account SIDs.
@@ -94,6 +95,21 @@ def vmware_pvscsi_sas_wwid(pnp_id: object) -> str | None:
     if match is None:
         return None
     return (match.group(2) + match.group(1)).lower()
+
+
+def vmware_pvscsi_sas_wwid_from_dsn(*, vendor: int, device: int, dsn: int) -> str | None:
+    """Return a VMware PVSCSI controller's sasWWID from its PCI ids and Device Serial Number.
+
+    The Linux view of :func:`vmware_pvscsi_sas_wwid`: Linux gives the ids and the DSN (from the
+    PCI config space) as numbers, Windows gives them inside a PnP instance id. This writes them
+    in the Windows shape (the DSN as 16 hex digits, then the function number ``00``) and reads
+    that back, so both OSes derive the sasWWID through one rule.
+
+    Example:
+        >>> vmware_pvscsi_sas_wwid_from_dsn(vendor=0x15AD, device=0x07C0, dsn=0x0123ABCD50050560)
+        '500505600123abcd'
+    """
+    return vmware_pvscsi_sas_wwid(f"PCI\\VEN_{vendor:04X}&DEV_{device:04X}\\{dsn:016X}00")
 
 
 def _mask_key(match: re.Match[str]) -> str:
@@ -233,4 +249,5 @@ __all__ = [
     "mask_product_keys",
     "msdm_product_key",
     "vmware_pvscsi_sas_wwid",
+    "vmware_pvscsi_sas_wwid_from_dsn",
 ]
