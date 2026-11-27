@@ -101,3 +101,42 @@ def test_an_all_zero_device_serial_number_is_no_serial_on_both_oses() -> None:
     (linux,) = summarize_linux(linux_body).scsi_controllers
     (windows,) = summarize_windows(windows_body).scsi_controllers
     assert (linux.pci_serial, windows.pci_serial) == (None, None)
+
+
+@pytest.mark.os_agnostic
+def test_windows_lists_hardware_adapters_and_pci_storage_controllers_only() -> None:
+    # A tunnel adapter and the Storage Spaces controller are software, as Linux's /sys/devices/virtual is.
+    tunnel: JsonObject = {
+        "adapter": {
+            "Name": "Tunnel",
+            "HardwareInterface": False,
+            "Virtual": True,
+            "PnPDeviceID": "SWD\\Wintun\\{00000000-0000-0000-0000-000000000001}",
+        }
+    }
+    nic: JsonObject = {
+        "adapter": {
+            "Name": "Ethernet0",
+            "HardwareInterface": True,
+            "Virtual": False,
+            "PnPDeviceID": "PCI\\VEN_1AF4&DEV_1000&SUBSYS_00011AF4&REV_00\\3&0&0&90",
+        }
+    }
+    body: JsonObject = {
+        "network": {"adapters": [tunnel, nic]},
+        "hardware": {"scsi_controllers": [
+            {"Name": "Example SCSI", "PNPDeviceID": "PCI\\VEN_1AF4&DEV_1004&SUBSYS_00081AF4&REV_00\\3&0&0&08"},
+            {"Name": "Storage Spaces", "PNPDeviceID": "ROOT\\SPACEPORT\\0000"},
+        ]},
+    }  # fmt: skip
+    summary = summarize_windows(body)
+    assert [n.name for n in summary.nics] == ["Ethernet0"]
+    assert [c.name for c in summary.scsi_controllers] == ["Example SCSI"]
+
+
+@pytest.mark.os_agnostic
+def test_a_windows_adapter_without_a_driver_file_name_takes_it_from_the_driver_path() -> None:
+    path = "\\SystemRoot\\System32\\DriverStore\\FileRepository\\netkvm.inf_amd64_0001\\NetKVM.sys"
+    record: JsonObject = {"adapter": {"Name": "Ethernet0", "HardwareInterface": True, "DriverName": path}}
+    (nic,) = summarize_windows({"network": {"adapters": [record]}}).nics
+    assert nic.driver == "netkvm"

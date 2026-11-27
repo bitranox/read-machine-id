@@ -231,6 +231,8 @@ def machine_document(*, product_id: str = "00330-80000-00000-AA111", serial: str
                 "PnPDeviceID": nic_pnp,
                 "InterfaceDescription": "vmxnet3 Ethernet Adapter",
                 "DriverFileName": "vmxnet3.sys",
+                "HardwareInterface": True,
+                "Virtual": False,
             }
         ],
         "root/StandardCimv2:MSFT_NetAdapterHardwareInfoSettingData": [

@@ -1,8 +1,12 @@
-"""The summary of a Windows reading: SMBIOS and CPUID first, WMI and the registry where they miss.
+r"""The summary of a Windows reading: SMBIOS and CPUID first, WMI and the registry where they miss.
 
 The SMBIOS and CPUID sections are decoded the same way on Linux, so taking them first keeps the
 two OSes' summaries in step; WMI fills what they leave None (an older reading without a ``cpuid``
 section, a table that failed to read).
+
+Like the Linux summary, it lists hardware only: adapters that report ``HardwareInterface`` (a
+tunnel or a VPN adapter does not) and storage controllers on the PCI bus (not the Storage Spaces
+controller or another software controller under ``ROOT\``). The full sections still hold them all.
 
 Contents:
     * :func:`summarize_windows` - the summary of a Windows reading's sections.
@@ -45,6 +49,7 @@ if TYPE_CHECKING:
     from .json_types import JsonObject
 
 _DRIVER_SUFFIX = ".sys"
+_PCI_ENUMERATOR = "PCI\\"
 
 
 def _system(body: JsonObject) -> SystemSummary:
@@ -86,11 +91,20 @@ def _memory(body: JsonObject) -> MemorySummary:
 
 
 def _driver(adapter: JsonObject) -> str | None:
-    name = text(adapter.get("DriverFileName"))
-    if name is None:
+    # DriverFileName is empty for some adapters (measured: netkvm on Windows 11); DriverName then
+    # holds the driver's full path, whose file name is the same value.
+    raw = text(adapter.get("DriverFileName")) or text(adapter.get("DriverName"))
+    if raw is None:
         return None
-    name = name.lower()
-    return name.removesuffix(_DRIVER_SUFFIX)
+    return raw.rsplit("\\", 1)[-1].lower().removesuffix(_DRIVER_SUFFIX)
+
+
+def _is_hardware_adapter(record: JsonObject) -> bool:
+    return obj(record, "adapter").get("HardwareInterface") is True
+
+
+def _on_pci(row: JsonObject) -> bool:
+    return (text(row.get("PNPDeviceID")) or "").upper().startswith(_PCI_ENUMERATOR)
 
 
 def _nic(record: JsonObject) -> NicSummary:
@@ -200,8 +214,8 @@ def summarize_windows(body: JsonObject) -> Summary:
         system=_system(body),
         cpu=_cpu(body),
         memory=_memory(body),
-        nics=tuple(_nic(r) for r in rows(body, "network", "adapters")),
-        scsi_controllers=tuple(_scsi(r, pci) for r in rows(body, "hardware", "scsi_controllers")),
+        nics=tuple(_nic(r) for r in rows(body, "network", "adapters") if _is_hardware_adapter(r)),
+        scsi_controllers=tuple(_scsi(r, pci) for r in rows(body, "hardware", "scsi_controllers") if _on_pci(r)),
         disks=_disks(body),
         os=_os(body),
         windows=_windows(body),

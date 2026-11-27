@@ -95,8 +95,11 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   `board_product`, `board_serial`, `chassis_type`, `chassis_serial`; `cpu.vendor`, `hypervisor`,
   `hypervisors`; `pci_address` and `driver` per NIC and storage controller; `controller` per disk
   (Linux); an `os` group (name, version, hostname, machine id). The `windows` group is present on
-  Linux with every field empty. On Linux the summary lists hardware only: devices under
-  `/sys/devices/virtual` (loopback, bridges, loop and device-mapper disks) are left out.
+  Linux with every field empty. The summary lists hardware only, on both OSes: on Linux devices
+  under `/sys/devices/virtual` (loopback, bridges, loop and device-mapper disks) are left out, on
+  Windows adapters that are no hardware interface (tunnel and VPN adapters) and storage
+  controllers off the PCI bus (Storage Spaces). The full sections still list them. A NIC's
+  `driver` on Windows comes from the driver's path when the adapter names no driver file.
 - `compare` names where each field comes from in a `source` column (`smbios type 1 system uuid`,
   `pci device serial number`, `cpuid 0x40000000 hypervisor signature`, ...), in the text table and
   in the JSON rows, so a comparison of two machines reads as a list of values to adjust.
