@@ -192,7 +192,7 @@ def machine_document(*, product_id: str = "00330-80000-00000-AA111", serial: str
                 "Name": "Example CPU",
                 "ProcessorId": "0000ABCD",
                 "NumberOfCores": 2,
-                "NumberOfLogicalProcessors": 4,
+                "NumberOfLogicalProcessors": 2,
                 "LoadPercentage": 3,
             }
         ],
@@ -204,10 +204,16 @@ def machine_document(*, product_id: str = "00330-80000-00000-AA111", serial: str
             {"CSName": "TESTBOX", "SerialNumber": product_id, "FreePhysicalMemory": "123456"}
         ],
         "root/cimv2:Win32_DiskDrive": [
-            {"Index": 0, "Model": "Virtual disk", "SerialNumber": "DISK-1", "Size": "1000", "Signature": 42}
+            {
+                "Index": 0,
+                "Model": "Virtual disk",
+                "SerialNumber": "VMW-DISK-0001",
+                "Size": "21474836480",
+                "Signature": 0xBBBB,
+            }
         ],
         "root/Microsoft/Windows/Storage:MSFT_Disk": [
-            {"Number": 0, "Guid": "{aaaaaaaa-0000-0000-0000-000000000001}", "UniqueId": "UID-1"}
+            {"Number": 0, "UniqueId": "6000C29AAAAAAAAAAAAAAAAAAAAAAAAA", "UniqueIdFormat": 3}
         ],
         "root/cimv2:Win32_SCSIController": [{"Name": "VMware PVSCSI Controller", "PNPDeviceID": scsi_pnp}],
         "root/cimv2:Win32_PnPEntity": [
@@ -224,6 +230,7 @@ def machine_document(*, product_id: str = "00330-80000-00000-AA111", serial: str
                 "PermanentAddress": "005056000001",
                 "PnPDeviceID": nic_pnp,
                 "InterfaceDescription": "vmxnet3 Ethernet Adapter",
+                "DriverFileName": "vmxnet3.sys",
             }
         ],
         "root/StandardCimv2:MSFT_NetAdapterHardwareInfoSettingData": [

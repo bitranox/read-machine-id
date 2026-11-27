@@ -112,11 +112,12 @@ def _vmware_files() -> dict[str, bytes]:
     files |= _leaves(
         "sys/block/sda/device",
         {"vendor": "VMware  ", "model": "Virtual disk    ", "rev": "2.0 ", "queue_depth": "254", "state": "running",
-         "wwid": "naa.6000c29aaaaaaaaaaaaaaaaaaaaaaa"},
+         "wwid": "naa.6000c29aaaaaaaaaaaaaaaaaaaaaaaaa"},
     )  # fmt: skip
     files["sys/block/sda/device/vpd_pg80"] = _vpd80("VMW-DISK-0001")
     files["sys/block/sda/device/vpd_pg83"] = _vpd83("6000c29aaaaaaaaaaaaaaaaaaaaaaaaa")
     files |= _leaves("sys/block/sda/sda1", {"partition": "1", "start": "2048", "size": "1048576", "dev": "8:1"})
+    files["run/udev/data/b8:0"] = b"E:ID_PART_TABLE_TYPE=dos\nE:ID_PART_TABLE_UUID=0000bbbb\n"
     files["run/udev/data/b8:1"] = (
         f"S:disk/by-uuid/{FS_UUID}\nE:ID_FS_UUID={FS_UUID}\nE:ID_FS_TYPE=ext4\nE:ID_PART_ENTRY_UUID=0000bbbb-01\n"
     ).encode()

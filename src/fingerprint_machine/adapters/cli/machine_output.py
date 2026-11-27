@@ -111,14 +111,18 @@ def render_reading(reading: JsonObject) -> str:
 
 
 def render_comparison(cmp: Comparison, document: JsonObject, *, diff_only: bool) -> str:
-    """Return the compared fields as a table (only the differing ones with ``diff_only``) and the score."""
+    """Return the compared fields as a table (only the differing ones with ``diff_only``) and the score.
+
+    The ``source`` column names the hardware or firmware field a value comes from, so a difference
+    between two machines reads as the thing to adjust; it is empty for an operating-system value.
+    """
     table = Table(title=f"{document['original']} -> {document['actual']}")
-    for column in ("field", "original", "actual", "status"):
+    for column in ("field", "original", "actual", "status", "source"):
         table.add_column(column)
     for row in cmp.rows:
         if diff_only and row.status not in DIFFERING:
             continue
-        table.add_row(row.path, _short(row.original, 40), _short(row.actual, 40), row.status.value)
+        table.add_row(row.path, _short(row.original, 40), _short(row.actual, 40), row.status.value, row.source or "")
     score = (
         f"identical: {document['identical']} of {document['scored']} scored fields ({document['identical_pct']} %)\n"
     )

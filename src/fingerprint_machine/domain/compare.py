@@ -5,8 +5,9 @@ and gives every path one :class:`FieldStatus`. Two kinds of path are shown but n
 because their difference says nothing about the machine:
 
 * volatile paths: counters and clocks that change between two readings of the same machine
-  (free memory, uptime, lease expiry). They are named twice: by path prefix for a whole branch,
-  and by leaf name for a property that turns up in many WMI classes.
+  (free memory, uptime, lease expiry, interrupt counts). They are named twice: by path prefix for
+  a whole branch, matched on the path's shape (list indexes stripped, so one entry covers every
+  device), and by leaf name for a property that turns up in many WMI classes.
 * paths only one side has when the two readings come from different schema versions: a newer
   reader collects fields an older one never asked for, and the older baseline cannot be
   re-collected once the machine it came from is gone.
@@ -27,18 +28,80 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from .sources import path_shape, source_of
+
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
     from .json_types import JsonObject, JsonValue
 
-#: Branches whose every value changes between readings of one machine.
-VOLATILE_PREFIXES = ("meta.", "windows.last_boot", "windows.uptime_s")
+# /proc/meminfo counters; the sizes beside them (MemTotal, SwapTotal, Hugepagesize, ...) stay scored.
+_MEMINFO_COUNTERS = (
+    "Active",
+    "AnonHugePages",
+    "AnonPages",
+    "Bounce",
+    "Buffers",
+    "Cached",
+    "CmaFree",
+    "Committed_AS",
+    "Dirty",
+    "FileHugePages",
+    "FilePmdMapped",
+    "HugePages_Free",
+    "HugePages_Rsvd",
+    "HugePages_Surp",
+    "Inactive",
+    "KReclaimable",
+    "KernelStack",
+    "Mapped",
+    "MemAvailable",
+    "MemFree",
+    "Mlocked",
+    "NFS_Unstable",
+    "PageTables",
+    "Percpu",
+    "SReclaimable",
+    "SUnreclaim",
+    "SecPageTables",
+    "Shmem",
+    "Slab",
+    "SwapCached",
+    "SwapFree",
+    "Unaccepted",
+    "Unevictable",
+    "VmallocUsed",
+    "Writeback",
+    "Zswap",
+)
+
+#: Branches whose every value changes between readings of one machine, matched on the path's
+#: shape (list indexes stripped). Leaf 1 EBX is volatile whole: bits 31:24 are the initial APIC id
+#: of whichever CPU ran the read, and a raw register is recorded as read, never masked.
+VOLATILE_PREFIXES = (
+    "meta.",
+    "windows.last_boot",
+    "windows.uptime_s",
+    "platform.boot_id",
+    "cpuid.raw.0x00000001:0.ebx",
+    "pci.devices[].power_state",
+    "pci.devices[].config.header.status",
+    "network.adapters[].neighbours",
+    "network.tables.neighbours",
+    "devices.modules[].refcount",
+    "security.ima.runtime_measurements_count",
+    *(f"memory.meminfo.{name}" for name in _MEMINFO_COUNTERS),
+)
 
 #: Property names that are counters or clocks wherever they occur.
 VOLATILE_KEYS = frozenset(
     {
+        "AntispywareSignatureAge",
+        "AntispywareSignatureLastUpdated",
+        "AntivirusSignatureAge",
+        "AntivirusSignatureLastUpdated",
         "CurrentClockSpeed",
+        "CurrentUsage",
         "CurrentVoltage",
         "DHCPLeaseExpires",
         "DHCPLeaseObtained",
@@ -46,16 +109,30 @@ VOLATILE_KEYS = frozenset(
         "FreeSpace",
         "FreeSpaceInPagingFiles",
         "FreeVirtualMemory",
+        "FullScanAge",
+        "FullScanEndTime",
+        "FullScanStartTime",
         "GracePeriodRemaining",
         "LastBootUpTime",
         "LoadPercentage",
         "LocalDateTime",
+        "LsaPid",
+        "NISSignatureAge",
+        "NISSignatureLastUpdated",
         "NumberOfProcesses",
         "NumberOfUsers",
+        "PeakUsage",
         "PreferredLifetime",
+        "QuickScanAge",
+        "QuickScanEndTime",
+        "QuickScanStartTime",
         "SizeRemaining",
         "TimeOfLastReset",
         "ValidLifetime",
+        "cpu_mhz",
+        "cpuinfo_cur_freq",
+        "per_cpu_counts",
+        "scaling_cur_freq",
     }
 )
 
@@ -79,12 +156,13 @@ DIFFERING = (FieldStatus.DIFF, FieldStatus.ONLY_ORIGINAL, FieldStatus.ONLY_ACTUA
 
 @dataclass(frozen=True)
 class FieldRow:
-    """One compared field: its path, both values and its status."""
+    """One compared field: its path, both values, its status and the hardware field it comes from."""
 
     path: str
     original: JsonValue
     actual: JsonValue
     status: FieldStatus
+    source: str | None = None
 
 
 @dataclass
@@ -131,7 +209,7 @@ def is_volatile(path: str) -> bool:
         >>> is_volatile("smbios.system.uuid")
         False
     """
-    if path.startswith(VOLATILE_PREFIXES):
+    if path_shape(path).startswith(VOLATILE_PREFIXES):
         return True
     leaf = path.rsplit(".", 1)[-1].split("[", 1)[0]
     return leaf in VOLATILE_KEYS
@@ -184,7 +262,7 @@ def compare_readings(a: JsonObject, b: JsonObject) -> Comparison:
         status = _status(path, in_a=path in fa, in_b=path in fb, same_schema=same_schema)
         if status is FieldStatus.SAME and va != vb:
             status = FieldStatus.DIFF
-        out.rows.append(FieldRow(path, va, vb, status))
+        out.rows.append(FieldRow(path, va, vb, status, source_of(path)))
     return out
 
 
@@ -214,10 +292,11 @@ def comparison_document(cmp: Comparison, labels: tuple[str, str]) -> JsonObject:
     Examples:
         >>> doc = comparison_document(compare_readings({"x": 1}, {"x": 2}), ("vmware", "kvm"))
         >>> doc["rows"], doc["differences"]
-        ([{'field': 'x', 'original': 1, 'actual': 2, 'status': 'diff'}], ['x'])
+        ([{'field': 'x', 'original': 1, 'actual': 2, 'status': 'diff', 'source': None}], ['x'])
     """
     rows: list[JsonValue] = [
-        {"field": r.path, "original": r.original, "actual": r.actual, "status": r.status.value} for r in cmp.rows
+        {"field": r.path, "original": r.original, "actual": r.actual, "status": r.status.value, "source": r.source}
+        for r in cmp.rows
     ]
     differences: list[JsonValue] = list(cmp.differences())
     return {

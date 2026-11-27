@@ -386,7 +386,7 @@ def collect(
             "collected_at": collected_at,
             "sections": [s.value for s in chosen],
         },
-        "summary": summarize(body),
+        "summary": summarize(body, machine_os=machine_os),
         **body,
     }
     masked = mask_product_keys(reading)

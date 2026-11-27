@@ -8,8 +8,8 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 ### Added
 
-- `collect` and `check` run on Linux. This version reads the `cpuid` section there; a section not
-  yet read on Linux is recorded as an error in its place and listed under `skipped`.
+- `collect` and `check` run on Linux and read every section listed below; a value only root may
+  read is recorded as needing root in its place.
 - A `cpuid` section on Windows and Linux: vendor, family, model, stepping, brand string, the
   feature flags of leaves 1, 7 and 0x80000001 (named as `/proc/cpuinfo` names them, unnamed bits
   as `bit<N>`), the hypervisor-present bit, every hypervisor signature found by scanning the
@@ -87,8 +87,34 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   (`trusted platform module`, `numerical password` and so on); for the TPM its readiness,
   ownership, activation, the endorsement key's presence, the dictionary-attack parameters and the
   lockout counter. One refused method is one recorded error. Needs pwshpy 1.13.0.
+- The `summary` has the same fields on Windows and Linux, so a Windows and a Linux reading of one
+  machine compare field by field. System, BIOS, board and chassis values come from the decoded
+  SMBIOS table and the CPU values from the `cpuid` section on both, falling back to WMI or to
+  `/sys/class/dmi/id` and `/proc/cpuinfo` where those are missing; memory module sizes come from
+  SMBIOS type 17. New fields: `system.bios_vendor`, `bios_date`, `board_manufacturer`,
+  `board_product`, `board_serial`, `chassis_type`, `chassis_serial`; `cpu.vendor`, `hypervisor`,
+  `hypervisors`; `pci_address` and `driver` per NIC and storage controller; `controller` per disk
+  (Linux); an `os` group (name, version, hostname, machine id). The `windows` group is present on
+  Linux with every field empty. On Linux the summary lists hardware only: devices under
+  `/sys/devices/virtual` (loopback, bridges, loop and device-mapper disks) are left out.
+- `compare` names where each field comes from in a `source` column (`smbios type 1 system uuid`,
+  `pci device serial number`, `cpuid 0x40000000 hypervisor signature`, ...), in the text table and
+  in the JSON rows, so a comparison of two machines reads as a list of values to adjust.
+- `compare` treats more values as volatile, so two readings of one idle machine taken a minute
+  apart compare without differences: interrupt counts, CPU clock readings, the `/proc/meminfo`
+  usage counters, CPUID leaf 1 EBX (it carries the APIC id of the CPU that ran the read), PCI power
+  state and status register, neighbour tables, kernel module reference counts, the boot id, IMA's
+  measurement count, Defender signature ages and scan times, and page file usage.
 
 ### Changed
+
+- `summary` values are written in one form on both OSes: a NIC `mac` in lower case with colons
+  (`00:50:56:00:00:01`, was `005056000001`); `pci_serial` as the PCI Device Serial Number in the
+  `lspci` form (`00-0c-29-ff-ff-00-00-01`, was the raw PnP instance id part), or empty when the
+  device has none; the system UUID and a disk's GPT GUID in upper case without braces; a disk's
+  `unique_id` with its `naa.` or `eui.` prefix in lower case, as Linux writes it. The CPU name and
+  `processor_id` come from CPUID first. `cpu.sockets`, `cores` and `logical_processors` are empty
+  instead of 0 when the reading cannot tell them.
 
 - Schema version 3. Compare marks fields only a schema 3 reading has as `newer-probe-only`
   against an older baseline.

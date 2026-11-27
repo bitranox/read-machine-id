@@ -103,7 +103,9 @@ Warnings go to standard error, so standard output can go straight into `jq` or a
 ## What a reading holds
 
 A reading starts with `meta` (tool version, schema version, OS, time, label) and a `summary` of the
-values people look for most:
+values people look for most. The summary has the same fields on Windows and on Linux, and writes each
+hardware value in one form on both, so a Windows and a Linux reading of one machine compare field by
+field:
 
 ```json
 {
@@ -112,38 +114,35 @@ values people look for most:
     "product": "Model X",
     "serial": "SER-0001",
     "uuid": "04030201-0605-0807-090A-0B0C0D0E0F10",
-    "sku": "SKU-9",
-    "family": "Family Y",
-    "bios_version": "V1.2"
+    "bios_vendor": "Example BIOS Vendor",
+    "bios_version": "V1.2",
+    "board_serial": "BOARD-0001",
+    "chassis_type": 1
   },
+  "cpu": { "vendor": "GenuineIntel", "processor_id": "BFEBFBFF000B0671", "hypervisor": "VMwareVMware" },
   "nics": [
     {
       "name": "Ethernet0",
-      "description": "vmxnet3 Ethernet Adapter",
-      "mac": "005056000001",
-      "interface_index": 6,
-      "pci_serial": "000C29FFFF000001",
-      "bus": 11, "device": 0, "function": 0, "slot": 160,
-      "class_key": "0007"
+      "mac": "00:50:56:00:00:01",
+      "pci_serial": "00-0c-29-ff-ff-00-00-01",
+      "pci_address": "0000:0b:00.0",
+      "driver": "vmxnet3",
+      "slot": 160
     }
   ],
-  "windows": {
-    "edition": "Professional",
-    "build": "26100.1000",
-    "product_id": "00330-80000-00000-AA111",
-    "device_id": "{DDDDDDDD-0000-0000-0000-000000000001}",
-    "machine_guid": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-    "machine_sid": "S-1-5-21-1000-2000-3000",
-    "license_status": 1,
-    "partial_product_key": "JK7LZ"
-  },
+  "disks": [{ "model": "Virtual disk", "serial": "DISK-0001", "unique_id": "naa.6000c29aaaaaaaaaaaaaaaaaaaaaaa" }],
+  "os": { "name": "Windows 11 Pro", "hostname": "TESTBOX", "machine_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" },
+  "windows": { "edition": "Professional", "build": "26100.1000", "partial_product_key": "JK7LZ" },
   "security": { "firmware_type": "UEFI", "secure_boot": 1, "tpm_version": "2.0", "vbs_status": 0 }
 }
 ```
 
-The values above are made up. The summary also has `cpu`, `memory`, `disks` and
-`scsi_controllers`; for a VMware PVSCSI controller the summary works out its SAS WWID from the
-controller's PCI serial.
+The values above are made up, and each group is shortened. The summary also has `memory` and
+`scsi_controllers`; for a VMware PVSCSI controller it works out the SAS WWID from the controller's
+PCI serial. System, BIOS, board and chassis values come from the SMBIOS table and CPU values from
+CPUID on both OSes. A value the reading does not hold is `null`: the `windows` group on Linux, the
+TPM manufacturer and VBS status on Linux, a disk's controller on Windows. The OS facts (names,
+interface numbers, `os`) differ between the two OSes by nature.
 
 The full sections follow the summary. `--section` reads any of them alone:
 

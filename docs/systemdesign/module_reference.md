@@ -24,8 +24,14 @@ moves or removes a module, a CLI option or a public name.
 - `src/fingerprint_machine/domain/cpuid.py`  -  CPUID registers and queries, which leaves to ask next, and the decoder (vendor, signature, brand, feature names, hypervisor bases)
 - `src/fingerprint_machine/domain/certificates.py`  -  EK certificate from a registry store blob; public fields only
 - `src/fingerprint_machine/domain/network.py`  -  Joins the per-adapter WMI classes and the network class key into one record per adapter
-- `src/fingerprint_machine/domain/summary.py`  -  The `summary` block of a reading
-- `src/fingerprint_machine/domain/compare.py`  -  Flatten, compare and score two readings; volatile and `newer-probe-only` rules
+- `src/fingerprint_machine/domain/summary.py`  -  The `summary` block of a reading: picks the Windows or the Linux builder
+- `src/fingerprint_machine/domain/summary_model.py`  -  The summary as frozen records, the same fields on both OSes, and `fill_missing`
+- `src/fingerprint_machine/domain/summary_shared.py`  -  Summary fields read the same way on both OSes: decoded SMBIOS (system, BIOS, board, chassis, type 17 modules) and the `cpuid` section
+- `src/fingerprint_machine/domain/summary_windows.py`  -  The summary of a Windows reading (SMBIOS and CPUID first, then WMI, the registry and the `pci` section)
+- `src/fingerprint_machine/domain/summary_linux.py`  -  The summary of a Linux reading (SMBIOS and CPUID first, then `/sys/class/dmi/id`, sysfs and procfs; hardware only)
+- `src/fingerprint_machine/domain/summary_values.py`  -  Tree walking and the canonical forms of MAC, UUID, PCI serial and address, disk identifier, DIMM size and ProcessorId
+- `src/fingerprint_machine/domain/sources.py`  -  Where each compared field comes from (the `source` of a comparison row), by path prefix
+- `src/fingerprint_machine/domain/compare.py`  -  Flatten, compare and score two readings; volatile and `newer-probe-only` rules; a `source` per row
 - `src/fingerprint_machine/domain/pci_config.py`  -  PCI configuration space: the 64-byte header, the standard and extended capability walk, Device Serial Number, PCI Express port type and slot, MSI, MSI-X, AER, SR-IOV
 - `src/fingerprint_machine/domain/pci_sysfs.py`  -  A PCI device's place in the sysfs tree (root bus and parent bridges) and its `resource` ranges
 - `src/fingerprint_machine/domain/interrupts.py`  -  `/proc/interrupts`: CPUs, numbered rows (chip, hwirq, trigger, actions, per-CPU counts) and named counters

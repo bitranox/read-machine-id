@@ -150,9 +150,11 @@ def test_summary_names_the_identity_values() -> None:
     assert _obj(nics[0]) == {
         "name": "Ethernet0",
         "description": "vmxnet3 Ethernet Adapter",
-        "mac": "005056000001",
+        "mac": "00:50:56:00:00:01",
         "interface_index": 6,
-        "pci_serial": "000C29FFFF000001",
+        "pci_serial": "00-0c-29-ff-ff-00-00-01",
+        "pci_address": "0000:0b:00.0",
+        "driver": "vmxnet3",
         "bus": 11,
         "device": 0,
         "function": 0,
