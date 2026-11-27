@@ -24,6 +24,13 @@ if TYPE_CHECKING:
     from fingerprint_machine.domain.json_types import JsonObject, JsonValue
 
 
+# The synthetic sysfs tree names files after PCI addresses (0000:03:00.0) and udev
+# device numbers (b8:1), as Linux does; Windows refuses ':' in a file name, so the
+# tests that build the tree run on POSIX only. The decoders they use are tested
+# on every OS from hand-built bytes.
+COLON_FILE_NAMES = pytest.mark.os_posix
+
+
 def _obj(value: JsonValue) -> JsonObject:
     assert isinstance(value, dict), value
     return value
@@ -51,7 +58,7 @@ def _by_name(items: JsonValue, name: str) -> JsonObject:
     return next(_obj(i) for i in _list(items) if _obj(i).get("name") == name)
 
 
-@pytest.mark.os_agnostic
+@COLON_FILE_NAMES
 def test_a_vmware_disk_names_its_pvscsi_controller_and_the_sas_wwid(tmp_path: Path) -> None:
     disks, _ = _section("disks", _guest(tmp_path, Flavour.VMWARE))
     sda = _by_name(disks["block_devices"], "sda")
@@ -74,7 +81,7 @@ def test_a_vmware_disk_names_its_pvscsi_controller_and_the_sas_wwid(tmp_path: Pa
     assert controller.get("sas_wwid") == PVSCSI_WWID
 
 
-@pytest.mark.os_agnostic
+@COLON_FILE_NAMES
 def test_a_kvm_guest_reads_virtio_and_nvme_and_marks_the_dsn_as_needing_root(tmp_path: Path) -> None:
     disks, skipped = _section("disks", _guest(tmp_path, Flavour.KVM))
     vda = _by_name(disks["block_devices"], "vda")
@@ -91,7 +98,7 @@ def test_a_kvm_guest_reads_virtio_and_nvme_and_marks_the_dsn_as_needing_root(tmp
     assert "disks.controllers[1].device_serial_number" in skipped
 
 
-@pytest.mark.os_agnostic
+@COLON_FILE_NAMES
 def test_a_vmware_nic_joins_sysfs_ethtool_and_netlink_by_interface(tmp_path: Path) -> None:
     network, skipped = _section("network", _guest(tmp_path, Flavour.VMWARE))
     assert [_obj(a).get("name") for a in _list(network["adapters"])] == ["ens192", "lo"]  # bonding_masters skipped
@@ -119,7 +126,7 @@ def test_a_vmware_nic_joins_sysfs_ethtool_and_netlink_by_interface(tmp_path: Pat
     assert "network.adapters[0].channels" in skipped  # not recorded for this NIC: one error, the rest read
 
 
-@pytest.mark.os_agnostic
+@COLON_FILE_NAMES
 def test_a_kvm_nic_and_the_resolver_behind_the_stub(tmp_path: Path) -> None:
     network, _ = _section("network", _guest(tmp_path, Flavour.KVM))
     nic = _by_name(network["adapters"], "eth0")
@@ -149,7 +156,7 @@ def test_collect_reads_the_network_of_this_linux_machine() -> None:
     assert any(_obj(a).get("address") == "127.0.0.1" for a in _list(loopback["ip_addresses"]))
 
 
-@pytest.mark.os_agnostic
+@COLON_FILE_NAMES
 def test_a_netlink_table_is_kept_to_its_cap_and_a_bad_message_is_one_error(tmp_path: Path) -> None:
     answers = storage_net_answers(Flavour.KVM)
     tables = _obj(answers["netlink"])
