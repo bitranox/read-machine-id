@@ -369,4 +369,34 @@ def decode_smbios(table: bytes, version: str) -> JsonObject:
     return decoded
 
 
-__all__ = ["SmbiosStructure", "SmbiosType", "decode_smbios", "parse_smbios_structures"]
+# GetSystemFirmwareTable('RSMB') returns RawSMBIOSData: Used20CallingMethod, major, minor,
+# DmiRevision (one byte each), Length (u32), then the structure table.
+_RAW_SMBIOS_HEADER = struct.Struct("<BBBBI")
+
+
+def split_raw_smbios(raw: bytes) -> tuple[bytes, str]:
+    """Return the structure table and the SMBIOS version from a RawSMBIOSData block.
+
+    Raises:
+        ValueError: the block is shorter than its header or than the length it states.
+
+    Examples:
+        >>> split_raw_smbios(bytes([0, 3, 1, 0]) + (3).to_bytes(4, "little") + b"abc")
+        (b'abc', '3.1')
+        >>> split_raw_smbios(b"\\0")
+        Traceback (most recent call last):
+        ...
+        ValueError: RawSMBIOSData is 1 bytes, shorter than its 8-byte header
+    """
+    if len(raw) < _RAW_SMBIOS_HEADER.size:
+        msg = f"RawSMBIOSData is {len(raw)} bytes, shorter than its {_RAW_SMBIOS_HEADER.size}-byte header"
+        raise ValueError(msg)
+    _method, major, minor, _dmi, length = _RAW_SMBIOS_HEADER.unpack_from(raw)
+    table = raw[_RAW_SMBIOS_HEADER.size : _RAW_SMBIOS_HEADER.size + length]
+    if len(table) != length:
+        msg = f"RawSMBIOSData states {length} table bytes, holds {len(table)}"
+        raise ValueError(msg)
+    return table, f"{major}.{minor}"
+
+
+__all__ = ["SmbiosStructure", "SmbiosType", "decode_smbios", "parse_smbios_structures", "split_raw_smbios"]
