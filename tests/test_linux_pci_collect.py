@@ -21,12 +21,11 @@ from linux_pci_builder import (
     Flavour,
     write_pci_tree,
 )
-from machine_builder import machine_document
 from pci_bytes import DSN_TEXT
 
 from fingerprint_machine.adapters.cli.root import cli
-from fingerprint_machine.adapters.fixture import FixtureLinuxSource, FixtureSources
-from fingerprint_machine.application.machine_ports import LinuxSources, WindowsSources
+from fingerprint_machine.adapters.fixture import FixtureLinuxSource
+from fingerprint_machine.application.machine_ports import LinuxSources
 from fingerprint_machine.composition import build_production, build_testing
 
 if TYPE_CHECKING:
@@ -226,17 +225,6 @@ def test_a_machine_without_a_pci_bus_has_no_devices_rather_than_an_error(tmp_pat
     pci = _pci(_collect(["--section", "pci"], factory))
     assert (pci["devices"], pci["slots"]) == ([], [])
     assert str(_obj(pci["interrupts"])["error"]).startswith("MissingPathError:")
-
-
-@pytest.mark.os_agnostic
-def test_windows_does_not_read_the_pci_section_yet_and_says_so_when_asked() -> None:
-    recorded = FixtureSources(machine_document())
-    factory = lambda: build_testing(sources=WindowsSources(platform=recorded, registry=recorded, cpuid=recorded))  # noqa: E731
-    reading = _obj(_collect([], factory)["data"])
-    assert "pci" not in reading
-    assert "pci" not in _list(_obj(reading["meta"])["sections"])
-    asked = _obj(_collect(["--section", "pci"], factory)["data"])
-    assert str(_obj(asked["pci"])["error"]).startswith("SourceError:")
 
 
 def _not_wholly_an_error(section: JsonValue) -> JsonObject:

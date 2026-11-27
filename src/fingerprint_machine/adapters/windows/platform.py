@@ -1,4 +1,4 @@
-"""The platform source of a real Windows machine: CIM through pwshpy, firmware through ctypes.
+"""The platform source of a real Windows machine: CIM through pwshpy, the rest through ctypes.
 
 pwshpy queries WMI natively (no ``powershell.exe`` child, no text parsing) and returns each
 instance as an open property bag; this adapter turns the bag into JSON and maps pwshpy's errors
@@ -18,10 +18,12 @@ from pwshpy import PwshPyError, ps
 
 from ...domain.machine_errors import SourceError
 from ...domain.smbios import split_raw_smbios
-from . import firmware
+from . import devnode, firmware, kernel
 
 if TYPE_CHECKING:
+    from ...domain.devprops import DeviceProperty
     from ...domain.json_types import JsonObject, JsonValue
+    from ...domain.numa import NumaNode
 
 
 def to_json(value: object) -> JsonValue:
@@ -84,6 +86,18 @@ class PwshpyPlatformSource:
     def firmware_type(self) -> str:
         """Return the firmware type."""
         return firmware.firmware_type()
+
+    def device_property(self, instance_id: str, prop: DeviceProperty) -> JsonValue:
+        """Return one configuration-manager property of a device instance."""
+        return devnode.device_property(instance_id, prop)
+
+    def numa_nodes(self) -> list[NumaNode]:
+        """Return every NUMA node."""
+        return kernel.numa_nodes()
+
+    def kernel_dma_protection(self) -> bool:
+        """Return whether Kernel DMA Protection is in force."""
+        return kernel.kernel_dma_protection()
 
 
 __all__ = ["PwshpyPlatformSource", "to_json"]

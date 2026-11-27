@@ -33,6 +33,10 @@ _KEY_TAIL = 5
 #: DigitalProductId decodes to the installed key on many Windows versions.
 WITHHELD_VALUE_NAMES = frozenset({"DigitalProductId", "DigitalProductId4"})
 WITHHELD = "<withheld: encodes the product key>"
+#: TPM authorization values Windows may cache in the registry (owner, lockout, endorsement):
+#: whoever holds one controls the TPM, so a reading never carries it.
+_TPM_AUTHORIZATION = re.compile(r"^(?:Storage)?(?:Owner|Lockout|Endorsement)Auth(?!Level)", re.IGNORECASE)
+TPM_WITHHELD = "<withheld: a TPM authorization value>"
 
 # VMware PVSCSI: PCI vendor 15AD, device 07C0. Its PnP instance serial is the controller's
 # sasWWID with the two 32-bit halves swapped, followed by "00" (18 hex digits).
@@ -147,6 +151,18 @@ def withhold_registry_values(values: Mapping[str, JsonValue]) -> JsonObject:
     return {name: WITHHELD if name in WITHHELD_VALUE_NAMES else data for name, data in values.items()}
 
 
+def withhold_tpm_authorization(values: Mapping[str, JsonValue]) -> JsonObject:
+    """Return TPM registry values with every cached authorization value withheld.
+
+    Examples:
+        >>> withhold_tpm_authorization({"OwnerAuthFull": "c2VjcmV0", "OSManagedAuthLevel": 4})
+        {'OwnerAuthFull': '<withheld: a TPM authorization value>', 'OSManagedAuthLevel': 4}
+        >>> withhold_tpm_authorization({"UseNullDerivedOwnerAuth": 1})
+        {'UseNullDerivedOwnerAuth': 1}
+    """
+    return {name: TPM_WITHHELD if _TPM_AUTHORIZATION.match(name) else data for name, data in values.items()}
+
+
 def machine_sid(account_sids: Iterable[object]) -> str | None:
     """Return the machine SID: the local account SIDs without their last part (the RID).
 
@@ -239,6 +255,7 @@ def msdm_product_key(table: bytes) -> JsonObject:
 
 
 __all__ = [
+    "TPM_WITHHELD",
     "WITHHELD",
     "WITHHELD_VALUE_NAMES",
     "TpmInterface",
@@ -250,4 +267,6 @@ __all__ = [
     "msdm_product_key",
     "vmware_pvscsi_sas_wwid",
     "vmware_pvscsi_sas_wwid_from_dsn",
+    "withhold_registry_values",
+    "withhold_tpm_authorization",
 ]

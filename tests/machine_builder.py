@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509.oid import NameOID
+from windows_builder import windows_extras
 
 from fingerprint_machine.domain.json_types import JsonObject, JsonValue
 
@@ -282,7 +283,20 @@ def machine_document(*, product_id: str = "00330-80000-00000-AA111", serial: str
         "tbs_hex": struct.pack("<IIII", 1, 2, 4, 0x4D).hex(),
         "firmware_type": "UEFI",
     }
-    return {"cim": cim, "registry": registry, "firmware": firmware, "cpuid": cpuid_document()}
+    extras = windows_extras(nic=nic_pnp, scsi=scsi_pnp)
+    return {
+        "cim": {**cim, **_obj(extras["cim"])},
+        "registry": {**registry, **_obj(extras["registry"])},
+        "firmware": firmware,
+        "cpuid": cpuid_document(),
+        "device_properties": extras["device_properties"],
+        "system": extras["system"],
+    }
+
+
+def _obj(value: JsonValue) -> JsonObject:
+    assert isinstance(value, dict)
+    return value
 
 
 __all__ = [

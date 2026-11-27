@@ -1,7 +1,8 @@
 """The ports a machine reading is collected through.
 
-A Windows reading asks two sources: :class:`PlatformSource` answers through CIM (WMI) and the
-firmware table interfaces, :class:`RegistrySource` reads the registry. A Linux reading asks one,
+A Windows reading asks two sources: :class:`PlatformSource` answers through CIM (WMI), the
+firmware table interfaces, the configuration manager (device properties no WMI class carries)
+and a few kernel queries; :class:`RegistrySource` reads the registry. A Linux reading asks one,
 :class:`LinuxSource`: files under ``/sys``, ``/proc``, ``/etc`` and ``/run``, plus the few kernel
 interfaces that are not files (ethtool and netlink sockets, the TPM device). Both OSes also ask
 :class:`CpuidSource`, the CPU itself. Production wires the real machine behind them; tests wire a
@@ -14,7 +15,7 @@ question never costs the whole reading.
 
 Contents:
     * :data:`RegistryData` - one registry value's data.
-    * :class:`PlatformSource` - CIM and firmware tables (Windows).
+    * :class:`PlatformSource` - CIM, firmware tables, device properties, NUMA and DMA guard (Windows).
     * :class:`RegistrySource` - the registry (Windows).
     * :class:`LinuxSource` - files and kernel interfaces (Linux).
     * :class:`NetlinkDump` - the netlink tables :meth:`LinuxSource.netlink_dump` can list.
@@ -33,7 +34,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
     from ..domain.cpuid import CpuidRegs
-    from ..domain.json_types import JsonObject
+    from ..domain.devprops import DeviceProperty
+    from ..domain.json_types import JsonObject, JsonValue
+    from ..domain.numa import NumaNode
 
 #: One registry value's data, as winreg returns it.
 type RegistryData = bytes | int | str | list[str] | None
@@ -79,6 +82,34 @@ class PlatformSource(Protocol):
 
         Raises:
             SourceError: the firmware type cannot be asked.
+        """
+        ...
+
+    def device_property(self, instance_id: str, prop: DeviceProperty) -> JsonValue:
+        """Return one property the configuration manager keeps for a device instance.
+
+        A device that is not present now (seen before, unplugged since) still answers the
+        properties Windows stored for it.
+
+        Raises:
+            MissingKeyError: the device has no such property, or there is no such device.
+            SourceError: the configuration manager refused.
+        """
+        ...
+
+    def numa_nodes(self) -> list[NumaNode]:
+        """Return every NUMA node with its processors, node 0 first.
+
+        Raises:
+            SourceError: the NUMA topology cannot be asked.
+        """
+        ...
+
+    def kernel_dma_protection(self) -> bool:
+        """Return whether Kernel DMA Protection is in force (the DMA guard policy is enabled).
+
+        Raises:
+            SourceError: the kernel refused the question.
         """
         ...
 

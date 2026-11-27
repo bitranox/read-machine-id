@@ -8,11 +8,15 @@ answers were saved. A recorded Windows machine is one document::
       "registry": {"<KEY PATH>": {"values": {name: data}, "subkeys": [name, ...]}},
       "firmware": {"smbios_hex": "...", "smbios_version": "3.1",
                    "acpi_hex": ["...", ...], "tbs_hex": "...", "firmware_type": "UEFI"},
-      "cpuid":    {"0x<leaf>:<subleaf>": {"eax": "0x...", "ebx": ..., "ecx": ..., "edx": ...}}
+      "cpuid":    {"0x<leaf>:<subleaf>": {"eax": "0x...", "ebx": ..., "ecx": ..., "edx": ...}},
+      "device_properties": {"<instance id>": {"<DeviceProperty value>": <decoded value>}},
+      "system":   {"numa_nodes": [{"node": 0, "group": 0, "mask": "0xf"}],
+                   "kernel_dma_protection": false}
     }
 
-A registry value written as ``{"hex": "0a0b"}`` is binary data. Key paths compare
-case-insensitively, as Windows does. A class, key or firmware entry the document lacks answers
+A registry value written as ``{"hex": "0a0b"}`` is binary data. Key paths and instance ids
+compare case-insensitively, as Windows does; a device property the document lacks is one the
+device does not have (:class:`MissingKeyError`). A class, key or firmware entry the document lacks answers
 :class:`SourceError`, exactly like a class that does not exist on a real machine. A ``where``
 filter is not evaluated: a recording holds the rows the query returned.
 
@@ -53,6 +57,7 @@ from typing import TYPE_CHECKING, cast
 
 from ..domain.cpuid import CpuidQuery, CpuidRegs
 from ..domain.machine_errors import MissingKeyError, NotAReadingError, SourceError
+from ..domain.numa import NumaNode
 from ..domain.tpm2 import TpmResponseError
 from .linux.sysfs import FilesystemReader
 
@@ -61,6 +66,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from ..application.machine_ports import NetlinkDump, RegistryData
+    from ..domain.devprops import DeviceProperty
     from ..domain.json_types import JsonObject, JsonValue
 
 # What a TPM answers NV_ReadPublic of an index it does not define: TPM_RC_HANDLE on handle 1.
@@ -92,6 +98,13 @@ def _register(regs: JsonObject, name: str) -> int:
     raise SourceError(f"cpuid register {name}: not recorded")
 
 
+def _numa_node(node: JsonObject) -> NumaNode:
+    number, group, mask = node.get("node"), node.get("group"), node.get("mask")
+    if not isinstance(number, int) or not isinstance(group, int) or not isinstance(mask, str):
+        raise SourceError(f"system.numa_nodes: {node} is not a recorded node")
+    return NumaNode(node=number, group=group, mask=int(mask, 16))
+
+
 def _recorded_cpuid(recorded: JsonObject, leaf: int, subleaf: int) -> CpuidRegs:
     """The recorded answer to one CPUID question: zeros when unrecorded, an error when recorded so."""
     answer = recorded.get(CpuidQuery(leaf, subleaf).key)
@@ -111,8 +124,11 @@ class FixtureSources:
         self._cim = _obj(document.get("cim", {}), "cim")
         self._firmware = _obj(document.get("firmware", {}), "firmware")
         self._cpuid = _obj(document.get("cpuid", {}), "cpuid")
+        self._system = _obj(document.get("system", {}), "system")
         registry = _obj(document.get("registry", {}), "registry")
         self._keys = {path.casefold(): _obj(entry, path) for path, entry in registry.items()}
+        properties = _obj(document.get("device_properties", {}), "device_properties")
+        self._properties = {i.casefold(): _obj(p, i) for i, p in properties.items()}
 
     # PlatformSource -------------------------------------------------------------------------
 
@@ -150,6 +166,27 @@ class FixtureSources:
         value = self._firmware.get("firmware_type")
         if not isinstance(value, str):
             raise SourceError("firmware.firmware_type: not recorded")
+        return value
+
+    def device_property(self, instance_id: str, prop: DeviceProperty) -> JsonValue:
+        """Return the recorded property of a device; an unrecorded device or property is not set."""
+        recorded = self._properties.get(instance_id.casefold())
+        if recorded is None or prop.value not in recorded:
+            raise MissingKeyError(f"{instance_id}: no {prop.value} property")
+        return recorded[prop.value]
+
+    def numa_nodes(self) -> list[NumaNode]:
+        """Return the recorded NUMA nodes."""
+        nodes = self._system.get("numa_nodes")
+        if not isinstance(nodes, list):
+            raise SourceError("system.numa_nodes: not recorded")
+        return [_numa_node(_obj(n, "system.numa_nodes")) for n in nodes]
+
+    def kernel_dma_protection(self) -> bool:
+        """Return the recorded Kernel DMA Protection state."""
+        value = self._system.get("kernel_dma_protection")
+        if not isinstance(value, bool):
+            raise SourceError("system.kernel_dma_protection: not recorded")
         return value
 
     # CpuidSource ----------------------------------------------------------------------------

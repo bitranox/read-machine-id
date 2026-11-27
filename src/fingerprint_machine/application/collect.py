@@ -19,20 +19,17 @@ Contents:
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING
 
-from ..domain.certificates import der_from_store_blob, describe_certificate
 from ..domain.enums import MachineOs
 from ..domain.identity import (
     decode_acpi_header,
-    decode_tbs_device_info,
     machine_sid,
     mask_product_keys,
     msdm_product_key,
     withhold_registry_values,
 )
-from ..domain.machine_errors import MissingKeyError, SourceError
+from ..domain.machine_errors import SourceError
 from ..domain.network import BY_INDEX, BY_NAME, join_adapters
 from ..domain.smbios import decode_smbios
 from ..domain.summary import summarize
@@ -41,77 +38,41 @@ from .collect_linux import LINUX_SECTIONS, read_linux_section
 from .guard import guarded
 from .machine_ports import WindowsSources
 from .sections import Section
+from .windows_hardware import read_cpus, read_displays, read_numa, read_scsi_map
+from .windows_pci import read_windows_pci
+from .windows_security import SECURITY_READERS
+from .windows_values import CIMV2, Reader, cim, optional_subkeys, reg, reg_value, registry_json, values
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
 
     from ..domain.json_types import JsonObject, JsonValue
-    from .machine_ports import MachineSources, RegistryData
+    from .machine_ports import MachineSources
 
 #: The reading layout version. 1 was the predecessor script's layout (``probe_version``); 3 added
 #: ``meta.os``, Linux readings and the ``cpuid`` section.
 SCHEMA_VERSION = 3
 
-_CIMV2 = "root/cimv2"
 _STORAGE = "root/Microsoft/Windows/Storage"
 _STANDARD = "root/StandardCimv2"
-_TPM = "root/cimv2/Security/MicrosoftTpm"
-_BITLOCKER = "root/cimv2/Security/MicrosoftVolumeEncryption"
-_DEVICE_GUARD = "root/Microsoft/Windows/DeviceGuard"
 _WMI = "root/wmi"
 
 _ENUM = r"HKLM\SYSTEM\CurrentControlSet\Enum"
 _NET_CLASS = r"HKLM\SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}"
-_EK_STORE = r"HKLM\SYSTEM\CurrentControlSet\Services\TPM\WMI\Endorsement\EKCertStore\Certificates"
 _CURRENT_VERSION = r"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion"
 _CLOUD_JOIN = r"HKLM\SYSTEM\CurrentControlSet\Control\CloudDomainJoin\JoinInfo"
 _WINDOWS_PRODUCT = "55c92734-d682-4d71-983e-d6ec3f16059f"
 
-Reader = Callable[[WindowsSources], "JsonValue"]
-
-
-def registry_json(data: RegistryData) -> JsonValue:
-    """Return one registry value's data as JSON: binary as hex, everything else as is.
-
-    Examples:
-        >>> registry_json(b"\\x01\\xff"), registry_json(["a"]), registry_json(5)
-        ('01ff', ['a'], 5)
-    """
-    if isinstance(data, bytes):
-        return data.hex()
-    if isinstance(data, list):
-        items: list[JsonValue] = list(data)
-        return items
-    return data
-
-
-def _values(src: WindowsSources, key: str) -> JsonObject:
-    return {name: registry_json(data) for name, data in src.registry.values(key).items()}
-
-
-def _value(src: WindowsSources, key: str, name: str) -> JsonValue:
-    return registry_json(src.registry.values(key)[name])
-
-
-def cim(class_name: str, namespace: str = _CIMV2, where: str | None = None) -> Reader:
-    """Return a reader for every instance of a CIM class."""
-
-    def read(src: WindowsSources) -> JsonValue:
-        rows: list[JsonValue] = list(src.platform.cim(class_name, namespace=namespace, where=where))
-        return rows
-
-    return read
-
-
-def reg(key: str) -> Reader:
-    """Return a reader for every value of a registry key."""
-    return lambda src: _values(src, key)
-
-
-def reg_value(key: str, name: str) -> Reader:
-    """Return a reader for one registry value."""
-    return lambda src: _value(src, key, name)
-
+#: ``Win32_OperatingSystem``'s memory figures (KiB), the counterpart of Linux ``meminfo`` totals.
+_MEMORY_TOTALS = (
+    "TotalVisibleMemorySize",
+    "FreePhysicalMemory",
+    "TotalVirtualMemorySize",
+    "FreeVirtualMemory",
+    "SizeStoredInPagingFiles",
+    "FreeSpaceInPagingFiles",
+    "MaxProcessMemorySize",
+)
 
 # --------------------------------------------------------------------------------------------
 # Readers that do more than one question.
@@ -158,17 +119,17 @@ def _class_keys(src: WindowsSources) -> dict[str, JsonObject]:
     for number in src.registry.subkeys(_NET_CLASS):
         if not number.isdigit():
             continue
-        values = guarded(lambda number=number: _values(src, rf"{_NET_CLASS}\{number}"))
-        if not isinstance(values, dict):
+        found = guarded(lambda number=number: values(src, rf"{_NET_CLASS}\{number}"))
+        if not isinstance(found, dict):
             continue
-        guid = values.get("NetCfgInstanceId")
+        guid = found.get("NetCfgInstanceId")
         if isinstance(guid, str):
-            keys[guid.upper()] = {"number": number, "values": values}
+            keys[guid.upper()] = {"number": number, "values": found}
     return keys
 
 
 def _category_rows(src: WindowsSources, class_name: str) -> list[JsonObject]:
-    namespace = _CIMV2 if class_name.startswith("Win32_") else _STANDARD
+    namespace = CIMV2 if class_name.startswith("Win32_") else _STANDARD
     return src.platform.cim(class_name, namespace=namespace)
 
 
@@ -241,14 +202,28 @@ def read_devices(src: WindowsSources) -> JsonValue:
                 "instance_id": inst,
                 "present": p is not None,
                 "name": p.get("Name") if p else None,
-                "registry": guarded(lambda inst=inst: _values(src, rf"{_ENUM}\{inst}")),
+                "registry": guarded(lambda inst=inst: values(src, rf"{_ENUM}\{inst}")),
                 "driver": drivers.get(inst.upper()),
             }
         )
     acpi: list[JsonValue] = []
     acpi.extend(sorted({k.split("\\")[1] for k in present if k.startswith("ACPI\\")}))
     drivers_error = drivers_answer if isinstance(drivers_answer, dict) else None
-    return {"instances": rows, "acpi_ids": acpi, "drivers_error": drivers_error}
+    return {
+        "instances": rows,
+        "acpi_ids": acpi,
+        "drivers_error": drivers_error,
+        # Every kernel driver installed, loaded or not: Linux lists only the loaded ones (modules).
+        "system_drivers": guarded(lambda: cim("Win32_SystemDriver")(src)),
+        "displays": guarded(lambda: read_displays(src)),
+    }
+
+
+def _memory_totals(src: WindowsSources) -> JsonValue:
+    rows: list[JsonValue] = [
+        {name: row.get(name) for name in _MEMORY_TOTALS} for row in src.platform.cim("Win32_OperatingSystem")
+    ]
+    return rows
 
 
 def _local_sids(src: WindowsSources) -> JsonValue:
@@ -256,39 +231,16 @@ def _local_sids(src: WindowsSources) -> JsonValue:
     return machine_sid(a.get("SID") for a in accounts)
 
 
-def _optional_subkeys(src: WindowsSources, key: str) -> list[str]:
-    """Subkeys of a key that only exists on some machines: none when it is absent."""
-    try:
-        return src.registry.subkeys(key)
-    except MissingKeyError:
-        return []
-
-
 def _cloud_join(src: WindowsSources) -> JsonValue:
     # The JoinInfo key exists only on a machine joined to Entra ID: absent means not joined.
     return {
-        thumb: guarded(lambda t=thumb: _values(src, rf"{_CLOUD_JOIN}\{t}"))
-        for thumb in _optional_subkeys(src, _CLOUD_JOIN)
+        thumb: guarded(lambda t=thumb: values(src, rf"{_CLOUD_JOIN}\{t}"))
+        for thumb in optional_subkeys(src, _CLOUD_JOIN)
     }
 
 
 def _current_version(src: WindowsSources) -> JsonValue:
-    return withhold_registry_values(_values(src, _CURRENT_VERSION))
-
-
-def _ek_certificates(src: WindowsSources) -> JsonValue:
-    out: list[JsonValue] = []
-    # The store exists only once Windows has cached an EK certificate (a TPM that has one).
-    for thumb in _optional_subkeys(src, _EK_STORE):
-        blob = src.registry.values(rf"{_EK_STORE}\{thumb}").get("Blob")
-        der = der_from_store_blob(blob) if isinstance(blob, bytes) else None
-        detail = describe_certificate(der) if der is not None else {"error": "no certificate in the store blob"}
-        out.append({"store_thumbprint": thumb, **detail})
-    return out
-
-
-def _tbs(src: WindowsSources) -> JsonValue:
-    return decode_tbs_device_info(src.platform.tbs_device_info())
+    return withhold_registry_values(values(src, _CURRENT_VERSION))
 
 
 # --------------------------------------------------------------------------------------------
@@ -310,11 +262,15 @@ ITEM_SECTIONS: Mapping[Section, Mapping[str, Reader]] = {
     Section.CPU: {
         "wmi": cim("Win32_Processor"),
         "caches": cim("Win32_CacheMemory"),
-        "registry": reg(r"HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0"),
+        "cpus": read_cpus,
     },
     Section.MEMORY: {
         "modules": cim("Win32_PhysicalMemory"),
         "arrays": cim("Win32_PhysicalMemoryArray"),
+        "totals": _memory_totals,
+        "page_files": cim("Win32_PageFileUsage"),
+        "page_file_settings": cim("Win32_PageFileSetting"),
+        "numa": read_numa,
     },
     Section.DISKS: {
         "wmi": cim("Win32_DiskDrive"),
@@ -323,6 +279,7 @@ ITEM_SECTIONS: Mapping[Section, Mapping[str, Reader]] = {
         "partitions": cim("MSFT_Partition", _STORAGE),
         "volumes": cim("Win32_Volume"),
         "initiator_ports": cim("MSFT_InitiatorPort", _STORAGE),
+        "scsi": read_scsi_map,
     },
     Section.HARDWARE: {
         "scsi_controllers": cim("Win32_SCSIController"),
@@ -355,15 +312,7 @@ ITEM_SECTIONS: Mapping[Section, Mapping[str, Reader]] = {
         "hotfixes": cim("Win32_QuickFixEngineering"),
         "cloud_join": _cloud_join,
     },
-    Section.SECURITY: {
-        "firmware_type": lambda src: src.platform.firmware_type(),
-        "secure_boot": reg(r"HKLM\SYSTEM\CurrentControlSet\Control\SecureBoot\State"),
-        "tpm": cim("Win32_Tpm", _TPM),
-        "tbs": _tbs,
-        "ek_certificates": _ek_certificates,
-        "device_guard": cim("Win32_DeviceGuard", _DEVICE_GUARD),
-        "bitlocker": cim("Win32_EncryptableVolume", _BITLOCKER),
-    },
+    Section.SECURITY: SECURITY_READERS,
     Section.SERVICES: {"all": cim("Win32_Service")},
 }
 
@@ -373,6 +322,7 @@ WHOLE_SECTIONS: Mapping[Section, Reader] = {
     Section.SMBIOS: read_smbios,
     Section.NETWORK: read_network,
     Section.DEVICES: read_devices,
+    Section.PCI: read_windows_pci,
 }
 
 
