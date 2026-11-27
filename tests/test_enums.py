@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from bitranox_template_py_cli.domain.enums import DeployTarget, OutputFormat
+from read_machine_id.domain.enums import DeployTarget, OutputFormat
 
 # ======================== OutputFormat ========================
 

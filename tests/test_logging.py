@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from bitranox_template_py_cli.adapters.logging.setup import LoggingConfigModel
+from read_machine_id.adapters.logging.setup import LoggingConfigModel
 
 
 @pytest.mark.os_agnostic

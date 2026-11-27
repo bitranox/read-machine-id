@@ -116,7 +116,7 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 - Ruff selects `C90` (mccabe), so a function over cyclomatic complexity 10, the house hard limit,
   now fails `make test`; before, nothing enforced it. Proven with a complexity-11 function, which
   ruff reported only once `C90` was selected; the tree itself already passes.
-- The distribution name is `bitranox-template-py-cli` (`[project].name` and `__init__conf__.name`),
+- The distribution name is `read-machine-id` (`[project].name` and `__init__conf__.name`),
   the hyphen form of the repository name; the import package, `-m` invocations, the macOS/Windows
   config directory and the wheel/sdist filenames keep the underscore form. It is the same PyPI
   project, since PyPI normalises `_` and `-`. A repository created with `rename.sh` now gets the
@@ -845,7 +845,7 @@ Tagged and released on GitHub, but never published to PyPI: the upload was rejec
 ## [1.1.1] - 2026-01-28
 
 ### Fixed
-- CLAUDE.md: replaced stale package name `bitranox_template_cli_app_config_log_mail` with `bitranox_template_py_cli` throughout
+- CLAUDE.md: replaced stale package name `bitranox_template_cli_app_config_log_mail` with `read_machine_id` throughout
 - Brittle SMTP mock assertions in `test_cli.py` now use structured `call_args` attributes instead of `str()` coercion
 - Stale docstring in `__init__conf__.py` claiming "adapters/platform layer" - corrected to "Package-level metadata module"
 - Weak OR assertion in `test_cli.py` for SMTP host display - replaced with two independent assertions

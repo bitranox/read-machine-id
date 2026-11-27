@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from toml_files import read_toml
 
-from bitranox_template_py_cli import __init__conf__
+from read_machine_id import __init__conf__
 
 _PYPROJECT_PATH = Path(__file__).parent.parent / "pyproject.toml"
 

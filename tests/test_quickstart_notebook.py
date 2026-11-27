@@ -85,7 +85,7 @@ def _run_install_cell(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, standi
     Returns:
         The checkout the cell ran from.
     """
-    checkout = tmp_path / "with space" / "bitranox_template_py_cli"
+    checkout = tmp_path / "with space" / "read_machine_id"
     checkout.mkdir(parents=True)
     shutil.copyfile(_ROOT / "pyproject.toml", checkout / "pyproject.toml")
     standin = tmp_path / "standin-python"

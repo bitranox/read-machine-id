@@ -1,5 +1,5 @@
 [project]
-name = "bitranox-template-py-cli"
+name = "read-machine-id"
 version = "2.4.5"
 description = "Template CLI application with configuration management and structured logging"
 readme = "README.md"
@@ -57,9 +57,9 @@ os = ["ubuntu-latest", "windows-latest", "macos-latest"]
 free-threaded = ["3.14", "3.15"]
 
 [project.urls]
-Homepage = "https://github.com/bitranox/bitranox_template_py_cli"
-Repository = "https://github.com/bitranox/bitranox_template_py_cli.git"
-Issues = "https://github.com/bitranox/bitranox_template_py_cli/issues"
+Homepage = "https://github.com/bitranox/read_machine_id"
+Repository = "https://github.com/bitranox/read_machine_id.git"
+Issues = "https://github.com/bitranox/read_machine_id/issues"
 
 [project.optional-dependencies]
 # orjson's fast path on 3.14+ GIL builds; a free-threaded build never imports it.
@@ -110,8 +110,8 @@ dev = [
 ]
 
 [project.scripts]
-bitranox_template_py_cli = "bitranox_template_py_cli.entry:main"
-bitranox-template-py-cli = "bitranox_template_py_cli.entry:main"
+read_machine_id = "read_machine_id.entry:main"
+read-machine-id = "read_machine_id.entry:main"
 
 [build-system]
 requires = ["hatchling>=1.33.0"]
@@ -121,11 +121,11 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/bitranox_template_py_cli"]
+packages = ["src/read_machine_id"]
 include = [
-    "src/bitranox_template_py_cli/py.typed",
-    "src/bitranox_template_py_cli/adapters/config/defaultconfig.toml",
-    "src/bitranox_template_py_cli/adapters/config/defaultconfig.d/*.toml",
+    "src/read_machine_id/py.typed",
+    "src/read_machine_id/adapters/config/defaultconfig.toml",
+    "src/read_machine_id/adapters/config/defaultconfig.d/*.toml",
 ]
 
 # An allowlist, never a denylist: hatchling reads only the root .gitignore, so tracked working
@@ -134,7 +134,7 @@ include = [
 # refuses any other top-level entry.
 [tool.hatch.build.targets.sdist]
 include = [
-    "/src/bitranox_template_py_cli",
+    "/src/read_machine_id",
     "/tests/*.py",
     "/docs",
     "/README.md",
@@ -197,12 +197,12 @@ runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 # body to exercise import-time and cache behaviour, so moving them to module top would defeat intent.
 "tests/*.py" = ["T20", "S101", "S105", "S106", "S108", "FBT001", "FBT003", "PLR0913", "PLR2004", "PLC0415"]
 # CLI: Click framework injects boolean params; commands have many options
-"src/bitranox_template_py_cli/adapters/cli/**/*.py" = ["FBT001", "FBT002", "PLR0913"]
+"src/read_machine_id/adapters/cli/**/*.py" = ["FBT001", "FBT002", "PLR0913"]
 # Protocols/adapters: many-param signatures by design
-"src/bitranox_template_py_cli/application/*.py" = ["PLR0913"]
-"src/bitranox_template_py_cli/adapters/config/*.py" = ["PLR0913"]
-"src/bitranox_template_py_cli/adapters/email/*.py" = ["PLR0913"]
-"src/bitranox_template_py_cli/adapters/memory/*.py" = ["PLR0913"]
+"src/read_machine_id/application/*.py" = ["PLR0913"]
+"src/read_machine_id/adapters/config/*.py" = ["PLR0913"]
+"src/read_machine_id/adapters/email/*.py" = ["PLR0913"]
+"src/read_machine_id/adapters/memory/*.py" = ["PLR0913"]
 
 [tool.pyright]
 typeCheckingMode = "strict"
@@ -236,8 +236,8 @@ parallel = false
 # pytest-cov erases it when a run starts and combines the data files beside it
 # when a run ends. bmk and CI each point COVERAGE_FILE at a directory of their
 # own; set it the same way before running pytest --cov beside another run.
-data_file = "/tmp/.coverage.bitranox_template_py_cli"
-source = ["src/bitranox_template_py_cli"]
+data_file = "/tmp/.coverage.read_machine_id"
+source = ["src/read_machine_id"]
 
 [tool.coverage.report]
 omit = [
@@ -286,18 +286,18 @@ coverage-report-file = "coverage.xml"
 src-path = "src"
 
 [tool.importlinter]
-root_package = "bitranox_template_py_cli"
+root_package = "read_machine_id"
 exclude_type_checking_imports = true
 
 [[tool.importlinter.contracts]]
 name = "Domain is pure (no adapter dependencies)"
 type = "forbidden"
 source_modules = [
-  "bitranox_template_py_cli.domain",
+  "read_machine_id.domain",
 ]
 forbidden_modules = [
-  "bitranox_template_py_cli.adapters",
-  "bitranox_template_py_cli.composition",
+  "read_machine_id.adapters",
+  "read_machine_id.composition",
 ]
 
 [[tool.importlinter.contracts]]
@@ -305,13 +305,13 @@ name = "Clean Architecture layers"
 type = "layers"
 layers = [
   # Composition wires adapters - can import everything
-  "bitranox_template_py_cli.composition",
+  "read_machine_id.composition",
   # Adapters implement ports - can import application and domain
-  "bitranox_template_py_cli.adapters",
+  "read_machine_id.adapters",
   # Application defines ports - can import domain
-  "bitranox_template_py_cli.application",
+  "read_machine_id.application",
   # Domain is pure - bottom layer
-  "bitranox_template_py_cli.domain",
+  "read_machine_id.domain",
 ]
 
 [tool.pip-audit]

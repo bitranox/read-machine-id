@@ -43,26 +43,26 @@ def _get_package_dir() -> Path:
 @pytest.mark.os_agnostic
 def test_when_print_info_runs_it_outputs_metadata(capsys: pytest.CaptureFixture[str]) -> None:
     """Verify print_info outputs package metadata."""
-    from bitranox_template_py_cli import print_info
+    from read_machine_id import print_info
 
     print_info()
 
     captured = capsys.readouterr().out
-    assert "Info for bitranox-template-py-cli:" in captured
+    assert "Info for read-machine-id:" in captured
     assert "version" in captured
 
 
 @pytest.mark.os_agnostic
 def test_metadata_constants_are_set() -> None:
     """Verify static metadata constants are properly set."""
-    from bitranox_template_py_cli import __init__conf__
+    from read_machine_id import __init__conf__
 
     # These should be non-empty when package is installed
     # The distribution name follows the GitHub repo name in its hyphen form; only the import
     # package keeps underscores. rename.sh carries this spelling into every copy of the template.
-    assert __init__conf__.name == "bitranox-template-py-cli"
+    assert __init__conf__.name == "read-machine-id"
     assert __init__conf__.version  # Should have a version
-    assert __init__conf__.shell_command == "bitranox-template-py-cli"
+    assert __init__conf__.shell_command == "read-machine-id"
 
 
 @pytest.mark.os_agnostic

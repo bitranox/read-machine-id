@@ -9,9 +9,9 @@ import lib_log_rich.runtime
 import pytest
 from lib_log_rich.domain import ConsoleTheme
 
-from bitranox_template_py_cli import __init__conf__
-from bitranox_template_py_cli.adapters import cli as cli_mod
-from bitranox_template_py_cli.composition import build_production
+from read_machine_id import __init__conf__
+from read_machine_id.adapters import cli as cli_mod
+from read_machine_id.composition import build_production
 
 if TYPE_CHECKING:
     from collections.abc import Callable

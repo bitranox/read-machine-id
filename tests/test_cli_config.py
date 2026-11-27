@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from bitranox_template_py_cli.adapters import cli as cli_mod
-from bitranox_template_py_cli.adapters.config import loader as config_mod
+from read_machine_id.adapters import cli as cli_mod
+from read_machine_id.adapters.config import loader as config_mod
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
@@ -313,7 +313,7 @@ def test_when_config_deploy_supports_multiple_targets(
     inject_deploy_configuration: Callable[[Callable[..., list[Path]]], Callable[[], Any]],
 ) -> None:
     """Verify config-deploy accepts multiple --target options."""
-    from bitranox_template_py_cli.domain.enums import DeployTarget
+    from read_machine_id.domain.enums import DeployTarget
 
     path1 = tmp_path / "config1.toml"
     path2 = tmp_path / "config2.toml"
@@ -569,7 +569,7 @@ def test_when_config_generate_examples_is_invoked_it_creates_files(
         return [created_file]
 
     monkeypatch.setattr(
-        "bitranox_template_py_cli.adapters.cli.commands.config.generate_examples", mock_generate_examples
+        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
     )
 
     result: Result = cli_runner.invoke(
@@ -598,7 +598,7 @@ def test_when_config_generate_examples_has_no_files_it_informs_user(
         return []
 
     monkeypatch.setattr(
-        "bitranox_template_py_cli.adapters.cli.commands.config.generate_examples", mock_generate_examples
+        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
     )
 
     result: Result = cli_runner.invoke(
@@ -643,7 +643,7 @@ def test_when_config_generate_examples_with_force_it_passes_force_flag(
         return [created_file]
 
     monkeypatch.setattr(
-        "bitranox_template_py_cli.adapters.cli.commands.config.generate_examples", mock_generate_examples
+        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
     )
 
     result: Result = cli_runner.invoke(
@@ -675,7 +675,7 @@ def test_when_config_generate_examples_without_force_it_defaults_to_false(
         return [created_file]
 
     monkeypatch.setattr(
-        "bitranox_template_py_cli.adapters.cli.commands.config.generate_examples", mock_generate_examples
+        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
     )
 
     result: Result = cli_runner.invoke(
@@ -703,7 +703,7 @@ def test_when_config_generate_examples_encounters_error_it_exits_with_general_er
         raise OSError("Disk full")
 
     monkeypatch.setattr(
-        "bitranox_template_py_cli.adapters.cli.commands.config.generate_examples", mock_generate_examples
+        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
     )
 
     result: Result = cli_runner.invoke(
@@ -724,7 +724,7 @@ def test_when_config_generate_examples_it_passes_correct_metadata(
     production_factory: Callable[[], Any],
 ) -> None:
     """Verify config-generate-examples passes correct slug, vendor, app from __init__conf__."""
-    from bitranox_template_py_cli import __init__conf__
+    from read_machine_id import __init__conf__
 
     captured_params: list[dict[str, Any]] = []
     created_file = tmp_path / "example.toml"
@@ -737,7 +737,7 @@ def test_when_config_generate_examples_it_passes_correct_metadata(
         return [created_file]
 
     monkeypatch.setattr(
-        "bitranox_template_py_cli.adapters.cli.commands.config.generate_examples", mock_generate_examples
+        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
     )
 
     result: Result = cli_runner.invoke(
@@ -774,7 +774,7 @@ def test_when_config_generate_examples_creates_multiple_files_it_lists_all(
         return [file1, file2]
 
     monkeypatch.setattr(
-        "bitranox_template_py_cli.adapters.cli.commands.config.generate_examples", mock_generate_examples
+        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
     )
 
     result: Result = cli_runner.invoke(

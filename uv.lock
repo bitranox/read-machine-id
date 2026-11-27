@@ -67,7 +67,7 @@ wheels = [
 ]
 
 [[package]]
-name = "bitranox-template-py-cli"
+name = "read-machine-id"
 version = "2.4.5"
 source = { editable = "." }
 dependencies = [

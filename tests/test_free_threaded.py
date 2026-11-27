@@ -45,8 +45,8 @@ import json
 import os
 import sys
 
-from bitranox_template_py_cli.adapters.cli.main import main
-from bitranox_template_py_cli.composition import build_production
+from read_machine_id.adapters.cli.main import main
+from read_machine_id.composition import build_production
 
 argv = ["--set", 'email.smtp_hosts=["a.test:25"]', "config", "--format", "json", "--section", "email"]
 code = main(argv, services_factory=build_production)

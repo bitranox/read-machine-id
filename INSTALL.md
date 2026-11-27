@@ -2,7 +2,7 @@
 
 > The CLI stack uses `rich-click`, which bundles `rich` styling on top of click-style ergonomics.
 
-This guide collects every supported method to install `bitranox_template_py_cli`, including
+This guide collects every supported method to install `read_machine_id`, including
 isolated environments and system package managers. Pick the option that matches your workflow.
 
 
@@ -30,24 +30,24 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ## One-shot run via uvx (no install needed)
 
 ```bash
-uvx bitranox-template-py-cli@latest --help
+uvx read-machine-id@latest --help
 ```
 
 ## Persistent install as CLI tool
 
 ```bash
 # install the CLI tool (isolated environment, added to PATH)
-uv tool install bitranox-template-py-cli
+uv tool install read-machine-id
 
 # upgrade to latest
-uv tool upgrade bitranox-template-py-cli
+uv tool upgrade read-machine-id
 ```
 
 ## Install as project dependency
 
 ```bash
 uv venv && source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
-uv pip install bitranox-template-py-cli
+uv pip install read-machine-id
 ```
 
 ## Verify installation
@@ -55,7 +55,7 @@ uv pip install bitranox-template-py-cli
 After any install method, confirm the CLI is available:
 
 ```bash
-bitranox-template-py-cli --version
+read-machine-id --version
 ```
 
 ---
@@ -67,9 +67,9 @@ bitranox-template-py-cli --version
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 # install from PyPI
-pip install bitranox-template-py-cli
+pip install read-machine-id
 # optional install from GitHub
-pip install "git+https://github.com/bitranox/bitranox_template_py_cli"
+pip install "git+https://github.com/bitranox/read_machine_id"
 # optional development install from local
 pip install -e ".[dev]"
 # optional install from local runtime only:
@@ -80,9 +80,9 @@ pip install .
 
 ```bash
 # install from PyPI
-pip install --user bitranox-template-py-cli
+pip install --user read-machine-id
 # optional install from GitHub
-pip install --user "git+https://github.com/bitranox/bitranox_template_py_cli"
+pip install --user "git+https://github.com/bitranox/read_machine_id"
 # optional install from local
 pip install --user .
 ```
@@ -98,45 +98,45 @@ python -m pip install pipx
 # optional install pipx via apt
 sudo apt install pipx
 # install via pipx from PyPI
-pipx install bitranox-template-py-cli
+pipx install read-machine-id
 # optional install via pipx from GitHub
-pipx install "git+https://github.com/bitranox/bitranox_template_py_cli"
+pipx install "git+https://github.com/bitranox/read_machine_id"
 # optional install from local
 pipx install .
-pipx upgrade bitranox-template-py-cli
+pipx upgrade read-machine-id
 # install from Git tag
-pipx install "git+https://github.com/bitranox/bitranox_template_py_cli@v1.1.0"
+pipx install "git+https://github.com/bitranox/read_machine_id@v1.1.0"
 ```
 
 ## From Build Artifacts
 
 ```bash
 python -m build
-pip install dist/bitranox_template_py_cli-*.whl
-pip install dist/bitranox_template_py_cli-*.tar.gz   # sdist
+pip install dist/read_machine_id-*.whl
+pip install dist/read_machine_id-*.tar.gz   # sdist
 ```
 
 ## Poetry or PDM Managed Environments
 
 ```bash
 # Poetry
-poetry add bitranox-template-py-cli     # as dependency
+poetry add read-machine-id     # as dependency
 poetry install                          # for local dev
 
 # PDM
-pdm add bitranox-template-py-cli
+pdm add read-machine-id
 pdm install
 ```
 
 ## Install Directly from Git
 
 ```bash
-pip install "git+https://github.com/bitranox/bitranox_template_py_cli"
+pip install "git+https://github.com/bitranox/read_machine_id"
 ```
 
 ## System Package Managers (Optional Distribution Channels)
 
 - Use [fpm](https://fpm.readthedocs.io/) to repackage the Python wheel into `.deb` or `.rpm` for distribution via `apt` or `yum`/`dnf`.
 
-All methods register both the `bitranox_template_py_cli` and
-`bitranox-template-py-cli` commands on your PATH.
+All methods register both the `read_machine_id` and
+`read-machine-id` commands on your PATH.

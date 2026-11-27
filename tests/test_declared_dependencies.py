@@ -18,7 +18,7 @@ import pytest
 from toml_files import read_toml
 
 _ROOT = Path(__file__).parent.parent
-_PACKAGE = "bitranox_template_py_cli"
+_PACKAGE = "read_machine_id"
 _SOURCE = _ROOT / "src" / _PACKAGE
 
 

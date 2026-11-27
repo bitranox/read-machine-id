@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from bitranox_template_py_cli.adapters import cli as cli_mod
-from bitranox_template_py_cli.composition import AppServices, build_production
+from read_machine_id.adapters import cli as cli_mod
+from read_machine_id.composition import AppServices, build_production
 
 if TYPE_CHECKING:
     from collections.abc import Callable

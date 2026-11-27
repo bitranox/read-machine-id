@@ -26,12 +26,12 @@ from lib_layered_config import Config
 from lib_log_rich.domain import LogLevel
 from pydantic import SecretStr, ValidationError
 
-from bitranox_template_py_cli import __init__conf__
-from bitranox_template_py_cli.adapters import cli as cli_mod
-from bitranox_template_py_cli.adapters.cli.main import main
-from bitranox_template_py_cli.adapters.email.config import EmailConfig, load_email_config_from_dict
-from bitranox_template_py_cli.adapters.memory.email import EmailSpy
-from bitranox_template_py_cli.composition import AppServices, build_production, build_testing
+from read_machine_id import __init__conf__
+from read_machine_id.adapters import cli as cli_mod
+from read_machine_id.adapters.cli.main import main
+from read_machine_id.adapters.email.config import EmailConfig, load_email_config_from_dict
+from read_machine_id.adapters.memory.email import EmailSpy
+from read_machine_id.composition import AppServices, build_production, build_testing
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator

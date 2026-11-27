@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from lib_layered_config import Config
 
-from bitranox_template_py_cli.adapters.config.overrides import (
+from read_machine_id.adapters.config.overrides import (
     ConfigOverride,
     apply_overrides,
     coerce_value,

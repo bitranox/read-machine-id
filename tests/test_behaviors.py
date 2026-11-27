@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from bitranox_template_py_cli.domain import behaviors
+from read_machine_id.domain import behaviors
 
 
 @pytest.mark.os_agnostic

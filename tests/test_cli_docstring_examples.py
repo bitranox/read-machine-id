@@ -16,7 +16,7 @@ import sys
 import click
 import pytest
 
-from bitranox_template_py_cli.adapters.cli.root import cli
+from read_machine_id.adapters.cli.root import cli
 
 
 def _commands(group: click.Group) -> dict[str, click.Command]:
