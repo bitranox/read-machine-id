@@ -89,7 +89,7 @@ def _finish_comparison(
     if out is not None:
         save_json(out, document)
     emit_success(mode, command, document, skipped=[], human=render_comparison(cmp, document, diff_only=diff_only))
-    ctx.exit(MachineExit.DIFFERENT if cmp.differences() else MachineExit.DONE)
+    ctx.exit(int(MachineExit.DIFFERENT if cmp.differences() else MachineExit.DONE))
 
 
 _OUT = click.Path(dir_okay=False, writable=True, readable=False, path_type=Path)
@@ -116,6 +116,16 @@ def cli_collect(
     SMBIOS, ACPI, firmware, CPU, memory, disks, every network adapter with its PCI location and
     settings, every device, Windows ids and licensing, TPM and security state. Product keys are
     masked to their last five characters.
+
+    \f
+    Example:
+        >>> import json
+        >>> from click.testing import CliRunner
+        >>> from read_machine_id.adapters.cli.root import cli
+        >>> from read_machine_id.composition import build_testing
+        >>> result = CliRunner().invoke(cli, ["collect", "--section", "cpu", "--json"], obj=build_testing)
+        >>> result.exit_code, json.loads(result.stdout)["data"]["meta"]["sections"]
+        (0, ['cpu'])
     """
     mode = _mode(as_json, bare)
     try:
@@ -124,7 +134,7 @@ def cli_collect(
             save_json(out, reading)
     except _REFUSALS as exc:
         emit_failure(mode, "collect", exc)
-        ctx.exit(MachineExit.ERROR)
+        ctx.exit(int(MachineExit.ERROR))
     emit_success(mode, "collect", reading, skipped=skipped_answers(reading), human=render_reading(reading))
 
 
@@ -138,14 +148,31 @@ def cli_collect(
 def cli_compare(
     ctx: click.Context, *, original: Path, actual: Path, diff_only: bool, out: Path | None, as_json: bool, bare: bool
 ) -> None:
-    """Compare two saved readings field by field. Exit 1 when they differ."""
+    """Compare two saved readings field by field. Exit 1 when they differ.
+
+    \f
+    Example:
+        >>> import json, shutil, tempfile
+        >>> from pathlib import Path
+        >>> from click.testing import CliRunner
+        >>> from read_machine_id.adapters.cli.root import cli
+        >>> from read_machine_id.composition import build_testing
+        >>> folder = Path(tempfile.mkdtemp())
+        >>> saved = str(folder / "a.json")
+        >>> CliRunner().invoke(cli, ["collect", "--out", saved], obj=build_testing).exit_code
+        0
+        >>> result = CliRunner().invoke(cli, ["compare", saved, saved, "--json-bare"], obj=build_testing)
+        >>> result.exit_code, json.loads(result.stdout)["differences"]
+        (0, [])
+        >>> shutil.rmtree(folder)
+    """
     mode = _mode(as_json, bare)
     try:
         result = compare_files(original, actual)
         _finish_comparison(ctx, mode, "compare", result, diff_only=diff_only, out=out)
     except _REFUSALS as exc:
         emit_failure(mode, "compare", exc)
-        ctx.exit(MachineExit.ERROR)
+        ctx.exit(int(MachineExit.ERROR))
 
 
 @click.command("check", context_settings=CLICK_CONTEXT_SETTINGS)
@@ -165,7 +192,24 @@ def cli_check(
     as_json: bool,
     bare: bool,
 ) -> None:
-    """Read this machine and compare it with a saved baseline. Exit 1 when it differs."""
+    """Read this machine and compare it with a saved baseline. Exit 1 when it differs.
+
+    \f
+    Example:
+        >>> import json, shutil, tempfile
+        >>> from pathlib import Path
+        >>> from click.testing import CliRunner
+        >>> from read_machine_id.adapters.cli.root import cli
+        >>> from read_machine_id.composition import build_testing
+        >>> folder = Path(tempfile.mkdtemp())
+        >>> baseline = str(folder / "base.json")
+        >>> CliRunner().invoke(cli, ["collect", "--out", baseline], obj=build_testing).exit_code
+        0
+        >>> result = CliRunner().invoke(cli, ["check", baseline, "--json"], obj=build_testing)
+        >>> result.exit_code, json.loads(result.stdout)["data"]["differences"]
+        (0, [])
+        >>> shutil.rmtree(folder)
+    """
     mode = _mode(as_json, bare)
     try:
         base = load_reading(baseline)
@@ -175,7 +219,7 @@ def cli_check(
         _finish_comparison(ctx, mode, "check", check(base, fresh), diff_only=diff_only, out=out)
     except _REFUSALS as exc:
         emit_failure(mode, "check", exc)
-        ctx.exit(MachineExit.ERROR)
+        ctx.exit(int(MachineExit.ERROR))
 
 
 __all__ = ["cli_check", "cli_collect", "cli_compare"]

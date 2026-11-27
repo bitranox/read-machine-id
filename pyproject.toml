@@ -23,7 +23,8 @@ dependencies = [
     "orjson>=3.13.0; python_version < \"3.14\"",
     "pwshpy>=1.12.3",
     "lib-registry>=3.4.0",
-    "cryptography>=42",
+    "cryptography>=50.0.2",
+    "rich>=15.0.0",
 ]
 license = { text = "MIT" }
 authors = [{ name = "bitranox", email = "bitranox@gmail.com" }]

@@ -53,12 +53,13 @@ NEEDS_CONFIG: dict[str, list[str]] = {
     "config": ["config"],
 }
 RUNS_WITHOUT_CONFIG: dict[str, list[str]] = {
+    "collect": ["collect", "--section", "cpu"],
     "config-deploy": ["config-deploy", "--target", "user"],
     "info": ["info"],
 }
-#: Covered by their own tests below: one writes into a directory, one fails on purpose, one
-#: replaces the logging runtime.
-OTHER = ("config-generate-examples", "fail", "logdemo")
+#: Covered by their own tests: one writes into a directory, one fails on purpose, one replaces
+#: the logging runtime, and compare and check need saved readings (tests/test_machine_cli.py).
+OTHER = ("check", "compare", "config-generate-examples", "fail", "logdemo")
 
 
 def _failing_config(error: Exception) -> Callable[[], AppServices]:
