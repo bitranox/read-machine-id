@@ -20,6 +20,7 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -85,11 +86,11 @@ _WOL = struct.Struct("<III6s2x")
 _LINK_SETTINGS = struct.Struct("<IIBBBBBBBbBBBB28x")
 _NWORDS_OFFSET = 15
 _SPEED_UNKNOWN = 0xFFFFFFFF
-_DUPLEXES = {0: Duplex.HALF, 1: Duplex.FULL}
-_PORTS = {
+_DUPLEXES = MappingProxyType({0: Duplex.HALF, 1: Duplex.FULL})
+_PORTS = MappingProxyType({
     0x00: Port.TWISTED_PAIR, 0x01: Port.AUI, 0x02: Port.BNC, 0x03: Port.MII,
     0x04: Port.FIBRE, 0x05: Port.DIRECT_ATTACH, 0xEF: Port.NONE, 0xFF: Port.OTHER,
-}  # fmt: skip
+})  # fmt: skip
 # WAKE_* bits, in bit order (WAKE_PHY = 1 << 0 ... WAKE_FILTER = 1 << 7).
 _WOL_MODES = ("phy", "unicast", "multicast", "broadcast", "arp", "magic", "magic_secure", "filter")
 

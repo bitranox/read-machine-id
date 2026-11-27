@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import ctypes
 import sys
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from ...domain.machine_errors import SourceError
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
 RSMB = int.from_bytes(b"RSMB", "big")
 ACPI = int.from_bytes(b"ACPI", "big")
 
-_FIRMWARE_TYPES = {1: "BIOS", 2: "UEFI"}
+_FIRMWARE_TYPES = MappingProxyType({1: "BIOS", 2: "UEFI"})
 # TPM_DEVICE_INFO is four u32 fields.
 _TBS_DEVICE_INFO_SIZE = 16
 _TBS_SUCCESS = 0

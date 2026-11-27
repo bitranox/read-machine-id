@@ -11,9 +11,9 @@ Contents:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
-from .identity import vmware_pvscsi_sas_wwid_from_dsn
+from .identity import TPM_VERSION_NAMES, vmware_pvscsi_sas_wwid_from_dsn
 from .summary_model import (
     CpuSummary,
     DiskSummary,
@@ -48,8 +48,6 @@ if TYPE_CHECKING:
 _VIRTUAL = "/virtual/"
 # SCSI peripheral device type 5 (CD/DVD): Windows lists optical drives apart from its disk drives.
 _OPTICAL = 5
-# tpm_version_major as the TPM Base Services name the version on Windows.
-_TPM_VERSIONS = {"1": "1.2", "2": "2.0"}
 
 
 def _system(body: JsonObject) -> SystemSummary:
@@ -118,7 +116,7 @@ def _slots(body: JsonObject) -> dict[str, int | None]:
 def _nic(record: JsonObject, slots: dict[str, int | None]) -> NicSummary:
     pci = obj(record, "pci")
     address = text(pci.get("address"))
-    bus, device, function = split_pci_address(address)
+    numbers = split_pci_address(address)
     return NicSummary(
         name=text(record.get("name")),
         mac=canonical_mac(record.get("permanent_address")) or canonical_mac(obj(record, "sysfs").get("address")),
@@ -126,9 +124,9 @@ def _nic(record: JsonObject, slots: dict[str, int | None]) -> NicSummary:
         pci_serial=canonical_dsn(pci.get("device_serial_number")),
         pci_address=address,
         driver=text(obj(record, "driver").get("driver")) or text(pci.get("driver")),
-        bus=bus,
-        device=device,
-        function=function,
+        bus=numbers.bus,
+        device=numbers.device,
+        function=numbers.function,
         slot=slots.get(address) if address is not None else None,
     )
 
@@ -167,15 +165,22 @@ def _controller(row: JsonObject, host_drivers: dict[str, str]) -> ScsiController
     )
 
 
-def _partition_table(record: JsonObject) -> tuple[int | None, str | None]:
+class _PartitionTable(NamedTuple):
+    """What identifies a disk's partition table: an MBR signature or a GPT disk GUID."""
+
+    mbr_signature: int | None
+    gpt_guid: str | None
+
+
+def _partition_table(record: JsonObject) -> _PartitionTable:
     """The MBR disk signature or the GPT disk GUID udev read from the partition table."""
     table = obj(record, "udev", "properties")
     kind, uid = text(table.get("ID_PART_TABLE_TYPE")), text(table.get("ID_PART_TABLE_UUID"))
     if kind == "dos" and uid is not None:
-        return integer(f"0x{uid}"), None
+        return _PartitionTable(mbr_signature=integer(f"0x{uid}"), gpt_guid=None)
     if kind == "gpt":
-        return None, canonical_uuid(uid)
-    return None, None
+        return _PartitionTable(mbr_signature=None, gpt_guid=canonical_uuid(uid))
+    return _PartitionTable(mbr_signature=None, gpt_guid=None)
 
 
 def _logical_unit_designator(device: JsonObject) -> str | None:
@@ -188,14 +193,14 @@ def _logical_unit_designator(device: JsonObject) -> str | None:
 
 def _disk(record: JsonObject) -> DiskSummary:
     device = obj(record, "device")
-    signature, guid = _partition_table(record)
+    table = _partition_table(record)
     return DiskSummary(
         model=text(device.get("model")),
         # NVMe names its serial in sysfs; a SCSI disk only through VPD page 0x80.
         serial=text(device.get("serial")) or text(device.get("vpd_serial")),
         size=integer(record.get("size_bytes")),
-        mbr_signature=signature,
-        gpt_guid=guid,
+        mbr_signature=table.mbr_signature,
+        gpt_guid=table.gpt_guid,
         # An NVMe namespace has its own wwid; a SCSI disk's is on its device. A disk whose only
         # designator is vendor specific has no kernel wwid, and Windows reports that designator.
         unique_id=canonical_disk_id(record.get("wwid"))
@@ -220,8 +225,11 @@ def _os(body: JsonObject) -> OsSummary:
 
 
 def _tpm_version(major: JsonValue) -> str | None:
-    value = text(major)
-    return _TPM_VERSIONS.get(value, value) if value is not None else None
+    """tpm_version_major as the TPM Base Services name the version on Windows."""
+    number = integer(major)
+    if number is None:
+        return text(major)
+    return TPM_VERSION_NAMES.get(number, str(number))
 
 
 def _security(body: JsonObject) -> SecuritySummary:

@@ -19,7 +19,9 @@ Contents:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from enum import StrEnum
+from types import MappingProxyType
+from typing import TYPE_CHECKING, NamedTuple
 
 from ..domain.blockdev import pci_addresses
 from ..domain.ethtool import (
@@ -154,23 +156,49 @@ class _Table:
         return out
 
 
-#: Each table: what it is called in a record, the netlink dump, its decoder, its index key.
-_TABLES: tuple[tuple[str, NetlinkDump, Callable[[bytes], JsonObject], str], ...] = (
-    ("netlink", NetlinkDump.LINKS, decode_link, "index"),
-    ("ip_addresses", NetlinkDump.ADDRESSES, decode_address, "index"),
-    ("routes", NetlinkDump.ROUTES, decode_route, "output_index"),
-    ("neighbours", NetlinkDump.NEIGHBOURS, decode_neighbour, "index"),
+class NetTable(StrEnum):
+    """The netlink tables, by the name an interface record lists their rows under."""
+
+    LINKS = "netlink"
+    ADDRESSES = "ip_addresses"
+    ROUTES = "routes"
+    NEIGHBOURS = "neighbours"
+
+
+class _TableSpec(NamedTuple):
+    """How one netlink table is read: its dump, its decoder, and the row key naming the interface."""
+
+    table: NetTable
+    dump: NetlinkDump
+    decode: Callable[[bytes], JsonObject]
+    key: str
+
+
+_TABLES: tuple[_TableSpec, ...] = (
+    _TableSpec(NetTable.LINKS, NetlinkDump.LINKS, decode_link, "index"),
+    _TableSpec(NetTable.ADDRESSES, NetlinkDump.ADDRESSES, decode_address, "index"),
+    _TableSpec(NetTable.ROUTES, NetlinkDump.ROUTES, decode_route, "output_index"),
+    _TableSpec(NetTable.NEIGHBOURS, NetlinkDump.NEIGHBOURS, decode_neighbour, "index"),
 )
 
 
-def _tables(src: LinuxSource) -> tuple[dict[str, _Table], JsonObject]:
-    tables: dict[str, _Table] = {}
+class _Tables(NamedTuple):
+    """Every netlink table read once, and what each dump recorded about itself."""
+
+    rows: Mapping[NetTable, _Table]
+    status: JsonObject
+
+
+def _tables(src: LinuxSource) -> _Tables:
+    tables: dict[NetTable, _Table] = {}
     status: JsonObject = {}
-    for name, dump, decode, key in _TABLES:
-        table = _Table(key=key)
-        status[name] = guarded(lambda dump=dump, decode=decode, table=table: table.read(src.netlink_dump(dump), decode))
-        tables[name] = table
-    return tables, status
+    for spec in _TABLES:
+        table = _Table(key=spec.key)
+        status[spec.table.value] = guarded(
+            lambda spec=spec, table=table: table.read(src.netlink_dump(spec.dump), spec.decode)
+        )
+        tables[spec.table] = table
+    return _Tables(rows=MappingProxyType(tables), status=status)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -194,11 +222,11 @@ def _place(src: LinuxSource, directory: str) -> JsonObject:
     }
 
 
-def _interface(src: LinuxSource, name: str, tables: Mapping[str, _Table]) -> JsonObject:
+def _interface(src: LinuxSource, name: str, tables: Mapping[NetTable, _Table]) -> JsonObject:
     directory = f"{_NET}/{name}"
     sysfs = read_leaves(src, directory, _INTERFACE_LEAVES)
     index = sysfs.get("ifindex")
-    links = tables["netlink"].take(index)
+    links = tables[NetTable.LINKS].take(index)
     record: JsonObject = {
         "name": name,
         "index": index,
@@ -209,8 +237,8 @@ def _interface(src: LinuxSource, name: str, tables: Mapping[str, _Table]) -> Jso
     }
     for question, ask in _ETHTOOL.items():
         record[question] = guarded(lambda ask=ask: ask(src, name))
-    for table in ("ip_addresses", "routes", "neighbours"):
-        record[table] = tables[table].take(index)
+    for table in (NetTable.ADDRESSES, NetTable.ROUTES, NetTable.NEIGHBOURS):
+        record[table.value] = tables[table].take(index)
     return record
 
 
@@ -238,16 +266,16 @@ def _dns(src: LinuxSource) -> JsonObject:
 def read_linux_network(src: LinuxSources) -> JsonValue:
     """Read every network interface with its ethtool answers, addresses, routes and neighbours."""
     system = src.system
-    tables, status = _tables(system)
+    tables = _tables(system)
     adapters: list[JsonValue] = [
-        guarded(lambda name=name: _interface(system, name, tables)) for name in _interfaces(system)
+        guarded(lambda name=name: _interface(system, name, tables.rows)) for name in _interfaces(system)
     ]
     return {
         "adapters": adapters,
-        "unmatched": {name: table.leftover() for name, table in tables.items() if table.rows},
+        "unmatched": {name.value: table.leftover() for name, table in tables.rows.items() if table.rows},
         "dns": _dns(system),
-        "tables": status,
+        "tables": tables.status,
     }
 
 
-__all__ = ["MAX_TABLE_ENTRIES", "read_linux_network"]
+__all__ = ["MAX_TABLE_ENTRIES", "NetTable", "read_linux_network"]

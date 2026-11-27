@@ -25,7 +25,7 @@ import struct
 import uuid
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Final, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -127,14 +127,21 @@ def parse_smbios_structures(table: bytes) -> list[SmbiosStructure]:
         parsed = _structure_at(table, pos)
         if parsed is None:
             break
-        structure, pos = parsed
-        out.append(structure)
-        if structure.type == SmbiosType.END_OF_TABLE:
+        pos = parsed.next_pos
+        out.append(parsed.structure)
+        if parsed.structure.type == SmbiosType.END_OF_TABLE:
             break
     return out
 
 
-def _structure_at(table: bytes, pos: int) -> tuple[SmbiosStructure, int] | None:
+class _Parsed(NamedTuple):
+    """One structure read from the table, and the offset where the next one starts."""
+
+    structure: SmbiosStructure
+    next_pos: int
+
+
+def _structure_at(table: bytes, pos: int) -> _Parsed | None:
     stype, length = table[pos], table[pos + 1]
     if length < _HEADER or pos + length > len(table):
         return None
@@ -144,7 +151,7 @@ def _structure_at(table: bytes, pos: int) -> tuple[SmbiosStructure, int] | None:
     raw = table[pos + length : end]
     strings = tuple(s.decode("latin-1") for s in raw.split(b"\0")) if raw else ()
     handle = int(struct.unpack_from("<H", table, pos + 2)[0])
-    return SmbiosStructure(stype, handle, table[pos : pos + length], strings), end + 2
+    return _Parsed(structure=SmbiosStructure(stype, handle, table[pos : pos + length], strings), next_pos=end + 2)
 
 
 def _smbios_uuid(raw: bytes) -> str | None:
@@ -315,21 +322,29 @@ def _raw(s: SmbiosStructure) -> JsonObject:
 
 
 # One decoder per type that is returned as a list (a machine may carry several of each).
-_LIST_DECODERS: dict[str, tuple[SmbiosType, Callable[[SmbiosStructure], JsonObject]]] = {
-    "cpu": (SmbiosType.PROCESSOR, _type4),
-    "slots": (SmbiosType.SYSTEM_SLOTS, _type9),
-    "memory_arrays": (SmbiosType.PHYSICAL_MEMORY_ARRAY, _type16),
-    "memory": (SmbiosType.MEMORY_DEVICE, _type17),
-    "memory_mapped": (SmbiosType.MEMORY_ARRAY_MAPPED_ADDRESS, _type19),
-    "onboard_devices": (SmbiosType.ONBOARD_DEVICES_EXTENDED, _type41),
-}
+class _Decoder(NamedTuple):
+    """The reading key one structure type is decoded under, and its decoder."""
+
+    key: str
+    structure_type: SmbiosType
+    decode: Callable[[SmbiosStructure], JsonObject]
+
+
+_LIST_DECODERS: Final[tuple[_Decoder, ...]] = (
+    _Decoder(key="cpu", structure_type=SmbiosType.PROCESSOR, decode=_type4),
+    _Decoder(key="slots", structure_type=SmbiosType.SYSTEM_SLOTS, decode=_type9),
+    _Decoder(key="memory_arrays", structure_type=SmbiosType.PHYSICAL_MEMORY_ARRAY, decode=_type16),
+    _Decoder(key="memory", structure_type=SmbiosType.MEMORY_DEVICE, decode=_type17),
+    _Decoder(key="memory_mapped", structure_type=SmbiosType.MEMORY_ARRAY_MAPPED_ADDRESS, decode=_type19),
+    _Decoder(key="onboard_devices", structure_type=SmbiosType.ONBOARD_DEVICES_EXTENDED, decode=_type41),
+)
 # The types the specification allows once: the first structure is decoded.
-_SINGLE_DECODERS: dict[str, tuple[SmbiosType, Callable[[SmbiosStructure], JsonObject]]] = {
-    "bios": (SmbiosType.BIOS, _type0),
-    "system": (SmbiosType.SYSTEM, _type1),
-    "board": (SmbiosType.BOARD, _type2),
-    "chassis": (SmbiosType.CHASSIS, _type3),
-}
+_SINGLE_DECODERS: Final[tuple[_Decoder, ...]] = (
+    _Decoder(key="bios", structure_type=SmbiosType.BIOS, decode=_type0),
+    _Decoder(key="system", structure_type=SmbiosType.SYSTEM, decode=_type1),
+    _Decoder(key="board", structure_type=SmbiosType.BOARD, decode=_type2),
+    _Decoder(key="chassis", structure_type=SmbiosType.CHASSIS, decode=_type3),
+)
 
 
 def decode_smbios(table: bytes, version: str) -> JsonObject:
@@ -357,12 +372,12 @@ def decode_smbios(table: bytes, version: str) -> JsonObject:
         "version": version,
         "type_counts": {str(t): len(v) for t, v in sorted(by_type.items())},
     }
-    for key, (stype, decode) in _SINGLE_DECODERS.items():
-        found = by_type.get(stype)
-        decoded[key] = decode(found[0]) if found else None
-    for key, (stype, decode) in _LIST_DECODERS.items():
-        items: list[JsonValue] = [decode(s) for s in by_type.get(stype, [])]
-        decoded[key] = items
+    for single in _SINGLE_DECODERS:
+        found = by_type.get(single.structure_type)
+        decoded[single.key] = single.decode(found[0]) if found else None
+    for listed in _LIST_DECODERS:
+        items: list[JsonValue] = [listed.decode(s) for s in by_type.get(listed.structure_type, [])]
+        decoded[listed.key] = items
     oem: list[JsonValue] = [x for s in by_type.get(SmbiosType.OEM_STRINGS, []) for x in s.strings]
     decoded["oem_strings"] = oem
     raw: list[JsonValue] = [_raw(s) for s in structures]

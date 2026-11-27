@@ -15,6 +15,7 @@ Contents:
     * :func:`canonical_dsn` - a Device Serial Number in the lspci form; an all-zero one is none.
     * :func:`dsn_from_instance` - the Device Serial Number in a Windows PnP instance id, lspci form.
     * :func:`pci_address` - a PCI address from segment, bus, device and function numbers.
+    * :class:`PciNumbers` - the bus, device and function numbers of a PCI address.
     * :func:`split_pci_address` - bus, device and function of a ``dddd:bb:dd.f`` address.
     * :func:`pci_order` - a sort key that puts devices in PCI address order, unplaced ones last.
     * :func:`memory_device_bytes` - the size of an SMBIOS type 17 memory device.
@@ -24,7 +25,8 @@ Contents:
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, NamedTuple
 
 from .pci_config import serial_number_text
 
@@ -38,7 +40,7 @@ _SEPARATED_MAC = re.compile(r"[0-9a-fA-F]{2}([:-][0-9a-fA-F]{2}){5}")
 _INSTANCE_DSN = re.compile(r"([0-9a-fA-F]{16})([0-9a-fA-F]{2})?")
 _HEX = re.compile(r"[0-9a-fA-F]+")
 # MSFT_Disk.UniqueIdFormat values naming an identifier Linux writes with a type prefix.
-_DISK_ID_PREFIXES = {2: "eui.", 3: "naa."}
+_DISK_ID_PREFIXES = MappingProxyType({2: "eui.", 3: "naa."})
 _PCI_ADDRESS = re.compile(r"[0-9a-fA-F]{4}:([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\.([0-7])")
 _LEAF_1 = "0x00000001:0"
 _SIZE_UNKNOWN = 0xFFFF
@@ -242,18 +244,26 @@ def pci_order(address: str | None) -> tuple[bool, str]:
     return (address is None, address or "")
 
 
-def split_pci_address(address: str | None) -> tuple[int | None, int | None, int | None]:
+class PciNumbers(NamedTuple):
+    """The bus, device and function numbers of a PCI address; None for each when it has none."""
+
+    bus: int | None
+    device: int | None
+    function: int | None
+
+
+def split_pci_address(address: str | None) -> PciNumbers:
     """Return the bus, device and function numbers of a ``dddd:bb:dd.f`` address.
 
     Example:
         >>> split_pci_address("0000:0b:00.0"), split_pci_address(None)
-        ((11, 0, 0), (None, None, None))
+        (PciNumbers(bus=11, device=0, function=0), PciNumbers(bus=None, device=None, function=None))
     """
     match = _PCI_ADDRESS.fullmatch(address or "")
     if match is None:
-        return None, None, None
+        return PciNumbers(bus=None, device=None, function=None)
     bus, device, function = match.groups()
-    return int(bus, 16), int(device, 16), int(function)
+    return PciNumbers(bus=int(bus, 16), device=int(device, 16), function=int(function))
 
 
 def memory_device_bytes(row: JsonObject) -> int | None:
@@ -296,6 +306,7 @@ def processor_id(raw_cpuid: JsonValue) -> str | None:
 
 
 __all__ = [
+    "PciNumbers",
     "canonical_disk_id",
     "canonical_dsn",
     "canonical_mac",

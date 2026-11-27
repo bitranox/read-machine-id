@@ -19,7 +19,7 @@ Contents:
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from ..domain.blockdev import parse_scheduler, parse_udev_record, pci_addresses
 from ..domain.identity import vmware_pvscsi_sas_wwid_from_dsn
@@ -243,20 +243,27 @@ def _disk_links(src: LinuxSource) -> JsonObject:
     return out
 
 
-def _udev_names(src: LinuxSource) -> tuple[frozenset[str], JsonValue]:
+class _UdevDatabase(NamedTuple):
+    """The udev database's entry names, and what the reading records about the database."""
+
+    names: frozenset[str]
+    record: JsonValue
+
+
+def _udev_names(src: LinuxSource) -> _UdevDatabase:
     """The udev database's entry names, and what the reading records about the database."""
     names = guarded(lambda: list(src.list_dir(_UDEV_DATA)))
     if isinstance(names, list):
-        return frozenset(str(n) for n in names), {"entries": len(names)}
-    return frozenset(), names
+        return _UdevDatabase(names=frozenset(str(n) for n in names), record={"entries": len(names)})
+    return _UdevDatabase(names=frozenset(), record=names)
 
 
 def read_linux_disks(src: LinuxSources) -> JsonValue:
     """Read every block device, storage controller and storage port of the machine."""
     system = src.system
-    udev_names, udev_database = _udev_names(system)
+    udev = _udev_names(system)
     disks: list[JsonValue] = [
-        guarded(lambda name=name: _block_device(system, name, udev_names)) for name in system.list_dir(_BLOCK)
+        guarded(lambda name=name: _block_device(system, name, udev.names)) for name in system.list_dir(_BLOCK)
     ]
     nvme: list[JsonValue] = [
         guarded(lambda name=name: _nvme_controller(system, name)) for name in optional_dir(system, "/sys/class/nvme")
@@ -275,7 +282,7 @@ def read_linux_disks(src: LinuxSources) -> JsonValue:
         "sas_devices": _class_devices(system, "sas_device", _SAS_DEVICE_LEAVES),
         "controllers": controllers,
         "disk_links": guarded(lambda: _disk_links(system)),
-        "udev_database": udev_database,
+        "udev_database": udev.record,
     }
 
 

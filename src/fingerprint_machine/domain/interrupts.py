@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -87,14 +87,21 @@ class InterruptTable:
         return [row for row in self.rows if row.irq is None]
 
 
-def _counts(text: str, limit: int) -> tuple[tuple[int, ...], str]:
+class _Counts(NamedTuple):
+    """The per-CPU counts at the start of a row, and the text that follows them."""
+
+    counts: tuple[int, ...]
+    rest: str
+
+
+def _counts(text: str, limit: int) -> _Counts:
     """Up to ``limit`` leading counts of ``text``, and what follows them."""
     counts: list[int] = []
     position = 0
     while len(counts) < limit and (match := _COUNT.match(text, position)) is not None:
         counts.append(int(match.group(1)))
         position = match.end()
-    return tuple(counts), text[position:].strip()
+    return _Counts(counts=tuple(counts), rest=text[position:].strip())
 
 
 def _actions(text: str) -> tuple[str, ...]:
@@ -117,11 +124,11 @@ def _rows(lines: Iterator[str], cpus: int) -> Iterator[InterruptRow]:
         if match is None:
             continue
         name, rest = match.groups()
-        counts, rest = _counts(rest, cpus)
+        row = _counts(rest, cpus)
         if name.isdigit():
-            yield _numbered(name, counts, rest)
+            yield _numbered(name, row.counts, row.rest)
         else:
-            yield InterruptRow(name, counts, description=rest or None)
+            yield InterruptRow(name, row.counts, description=row.rest or None)
 
 
 def parse_interrupts(text: str) -> InterruptTable:

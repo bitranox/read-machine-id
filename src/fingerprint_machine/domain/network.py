@@ -15,7 +15,7 @@ Contents:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -52,13 +52,20 @@ def _upper(value: JsonValue) -> str | None:
     return value.upper() if isinstance(value, str) else None
 
 
+class _Joined(NamedTuple):
+    """Each adapter's rows, in adapter order, and the rows that matched no adapter."""
+
+    per_adapter: list[list[JsonValue]]
+    unmatched: list[JsonValue]
+
+
 def _join(
     adapters: Sequence[JsonObject],
     rows: Sequence[JsonObject],
     *,
     row_key: str,
     adapter_key: str,
-) -> tuple[list[list[JsonValue]], list[JsonValue]]:
+) -> _Joined:
     """Distribute ``rows`` over ``adapters``; return each adapter's rows and the leftovers."""
     position = {a.get(adapter_key): i for i, a in enumerate(adapters) if a.get(adapter_key) is not None}
     per_adapter: list[list[JsonValue]] = [[] for _ in adapters]
@@ -69,7 +76,7 @@ def _join(
             unmatched.append(row)
         else:
             per_adapter[index].append(row)
-    return per_adapter, unmatched
+    return _Joined(per_adapter=per_adapter, unmatched=unmatched)
 
 
 def _class_key(adapter: JsonObject, class_keys: Mapping[str, JsonObject]) -> JsonValue:
@@ -114,11 +121,11 @@ def join_adapters(
         rows = categories.get(category)
         if rows is None:
             continue
-        per_adapter, leftover = _join(adapters, rows, row_key=row_key, adapter_key=adapter_key)
-        for record, mine in zip(records, per_adapter, strict=True):
+        joined = _join(adapters, rows, row_key=row_key, adapter_key=adapter_key)
+        for record, mine in zip(records, joined.per_adapter, strict=True):
             record[category] = mine
-        if leftover:
-            unmatched[category] = leftover
+        if joined.unmatched:
+            unmatched[category] = joined.unmatched
     out_records: list[JsonValue] = list(records)
     return {"adapters": out_records, "unmatched": unmatched}
 

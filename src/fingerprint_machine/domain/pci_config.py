@@ -30,9 +30,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final, NamedTuple
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from .json_types import JsonObject, JsonValue
 
 #: The bytes every configuration space has: the header an unprivileged read returns.
@@ -61,70 +64,74 @@ _MAX_EXTENDED = (4096 - EXTENDED_START) // 4
 _PINS = (None, "INTA", "INTB", "INTC", "INTD")
 
 #: Standard capability ids, as ``PCI_CAP_ID_*`` names them.
-_CAP_NAMES: dict[int, str] = {
-    0x01: "power_management",
-    0x02: "agp",
-    0x03: "vital_product_data",
-    0x04: "slot_identification",
-    0x05: "msi",
-    0x06: "compactpci_hot_swap",
-    0x07: "pci_x",
-    0x08: "hypertransport",
-    0x09: "vendor_specific",
-    0x0A: "debug_port",
-    0x0B: "compactpci_central_resource",
-    0x0C: "pci_hot_plug",
-    0x0D: "bridge_subsystem_vendor_id",
-    0x0E: "agp_8x",
-    0x0F: "secure_device",
-    0x10: "pci_express",
-    0x11: "msi_x",
-    0x12: "sata",
-    0x13: "advanced_features",
-    0x14: "enhanced_allocation",
-    0x15: "flattening_portal_bridge",
-}
+_CAP_NAMES: Final[Mapping[int, str]] = MappingProxyType(
+    {
+        0x01: "power_management",
+        0x02: "agp",
+        0x03: "vital_product_data",
+        0x04: "slot_identification",
+        0x05: "msi",
+        0x06: "compactpci_hot_swap",
+        0x07: "pci_x",
+        0x08: "hypertransport",
+        0x09: "vendor_specific",
+        0x0A: "debug_port",
+        0x0B: "compactpci_central_resource",
+        0x0C: "pci_hot_plug",
+        0x0D: "bridge_subsystem_vendor_id",
+        0x0E: "agp_8x",
+        0x0F: "secure_device",
+        0x10: "pci_express",
+        0x11: "msi_x",
+        0x12: "sata",
+        0x13: "advanced_features",
+        0x14: "enhanced_allocation",
+        0x15: "flattening_portal_bridge",
+    }
+)
 
 #: Extended capability ids, as ``PCI_EXT_CAP_ID_*`` names them.
-_EXT_NAMES: dict[int, str] = {
-    0x01: "advanced_error_reporting",
-    0x02: "virtual_channel",
-    0x03: "device_serial_number",
-    0x04: "power_budgeting",
-    0x05: "root_complex_link_declaration",
-    0x06: "root_complex_internal_link_control",
-    0x07: "root_complex_event_collector",
-    0x08: "multi_function_virtual_channel",
-    0x09: "virtual_channel_9",
-    0x0A: "root_complex_register_block",
-    0x0B: "vendor_specific",
-    0x0C: "config_access_correlation",
-    0x0D: "access_control_services",
-    0x0E: "alternative_routing_id",
-    0x0F: "address_translation_services",
-    0x10: "sr_iov",
-    0x11: "mr_iov",
-    0x12: "multicast",
-    0x13: "page_request",
-    0x15: "resizable_bar",
-    0x16: "dynamic_power_allocation",
-    0x17: "tph_requester",
-    0x18: "latency_tolerance_reporting",
-    0x19: "secondary_pci_express",
-    0x1A: "protocol_multiplexing",
-    0x1B: "process_address_space_id",
-    0x1C: "lane_number_receiver",
-    0x1D: "downstream_port_containment",
-    0x1E: "l1_pm_substates",
-    0x1F: "precision_time_measurement",
-    0x23: "designated_vendor_specific",
-    0x25: "data_link_feature",
-    0x26: "physical_layer_16gt",
-    0x27: "lane_margining",
-    0x29: "native_pcie_enclosure_management",
-    0x2A: "physical_layer_32gt",
-    0x2E: "data_object_exchange",
-}
+_EXT_NAMES: Final[Mapping[int, str]] = MappingProxyType(
+    {
+        0x01: "advanced_error_reporting",
+        0x02: "virtual_channel",
+        0x03: "device_serial_number",
+        0x04: "power_budgeting",
+        0x05: "root_complex_link_declaration",
+        0x06: "root_complex_internal_link_control",
+        0x07: "root_complex_event_collector",
+        0x08: "multi_function_virtual_channel",
+        0x09: "virtual_channel_9",
+        0x0A: "root_complex_register_block",
+        0x0B: "vendor_specific",
+        0x0C: "config_access_correlation",
+        0x0D: "access_control_services",
+        0x0E: "alternative_routing_id",
+        0x0F: "address_translation_services",
+        0x10: "sr_iov",
+        0x11: "mr_iov",
+        0x12: "multicast",
+        0x13: "page_request",
+        0x15: "resizable_bar",
+        0x16: "dynamic_power_allocation",
+        0x17: "tph_requester",
+        0x18: "latency_tolerance_reporting",
+        0x19: "secondary_pci_express",
+        0x1A: "protocol_multiplexing",
+        0x1B: "process_address_space_id",
+        0x1C: "lane_number_receiver",
+        0x1D: "downstream_port_containment",
+        0x1E: "l1_pm_substates",
+        0x1F: "precision_time_measurement",
+        0x23: "designated_vendor_specific",
+        0x25: "data_link_feature",
+        0x26: "physical_layer_16gt",
+        0x27: "lane_margining",
+        0x29: "native_pcie_enclosure_management",
+        0x2A: "physical_layer_32gt",
+        0x2E: "data_object_exchange",
+    }
+)
 
 _CAP_MSI = 0x05
 _CAP_EXP = 0x10
@@ -158,17 +165,19 @@ class PciePortType(StrEnum):
         return _PORT_TYPES.get(number)
 
 
-_PORT_TYPES: dict[int, PciePortType] = {
-    0x0: PciePortType.ENDPOINT,
-    0x1: PciePortType.LEGACY_ENDPOINT,
-    0x4: PciePortType.ROOT_PORT,
-    0x5: PciePortType.UPSTREAM_PORT,
-    0x6: PciePortType.DOWNSTREAM_PORT,
-    0x7: PciePortType.PCIE_TO_PCI_BRIDGE,
-    0x8: PciePortType.PCI_TO_PCIE_BRIDGE,
-    0x9: PciePortType.RC_INTEGRATED_ENDPOINT,
-    0xA: PciePortType.RC_EVENT_COLLECTOR,
-}
+_PORT_TYPES: Final[Mapping[int, PciePortType]] = MappingProxyType(
+    {
+        0x0: PciePortType.ENDPOINT,
+        0x1: PciePortType.LEGACY_ENDPOINT,
+        0x4: PciePortType.ROOT_PORT,
+        0x5: PciePortType.UPSTREAM_PORT,
+        0x6: PciePortType.DOWNSTREAM_PORT,
+        0x7: PciePortType.PCIE_TO_PCI_BRIDGE,
+        0x8: PciePortType.PCI_TO_PCIE_BRIDGE,
+        0x9: PciePortType.RC_INTEGRATED_ENDPOINT,
+        0xA: PciePortType.RC_EVENT_COLLECTOR,
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -272,17 +281,24 @@ def decode_header(cfg: bytes) -> JsonObject:
     }
 
 
-def _walk_standard(cfg: bytes) -> tuple[tuple[PciCapability, ...], int | None]:
+class _StandardWalk(NamedTuple):
+    """The standard capabilities found, and the pointer past the bytes read when the list ran out."""
+
+    capabilities: tuple[PciCapability, ...]
+    unread_at: int | None
+
+
+def _walk_standard(cfg: bytes) -> _StandardWalk:
     found: list[PciCapability] = []
     seen: set[int] = set()
     pointer = _cap_pointer(cfg) if len(cfg) >= HEADER_BYTES else None
     while pointer and pointer >= HEADER_BYTES and pointer not in seen and len(found) < _MAX_STANDARD:
         if pointer + 2 > len(cfg):
-            return tuple(found), pointer
+            return _StandardWalk(capabilities=tuple(found), unread_at=pointer)
         seen.add(pointer)
         found.append(PciCapability(cfg[pointer], pointer))
         pointer = cfg[pointer + 1] & _POINTER_MASK
-    return tuple(found), None
+    return _StandardWalk(capabilities=tuple(found), unread_at=None)
 
 
 def _walk_extended(cfg: bytes) -> tuple[PciCapability, ...]:
@@ -310,9 +326,9 @@ def walk_capabilities(cfg: bytes) -> CapabilityWalk:
         >>> walk_capabilities(bytes(64)).capabilities
         ()
     """
-    standard, unread_at = _walk_standard(cfg)
-    extended = _walk_extended(cfg) if unread_at is None else ()
-    return CapabilityWalk(capabilities=standard, extended=extended, unread_at=unread_at)
+    standard = _walk_standard(cfg)
+    extended = _walk_extended(cfg) if standard.unread_at is None else ()
+    return CapabilityWalk(capabilities=standard.capabilities, extended=extended, unread_at=standard.unread_at)
 
 
 def _first(caps: tuple[PciCapability, ...], cap_id: int) -> int | None:

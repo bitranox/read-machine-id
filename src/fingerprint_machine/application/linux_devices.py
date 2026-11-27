@@ -11,12 +11,19 @@ from ``/sys/class/input``; a bus this machine does not have is simply absent fro
 Contents:
     * :class:`DeviceBus` - the buses read, and where each lists its devices.
     * :func:`read_devices` - read the section.
+
+Every bus names the id files it publishes:
+
+    >>> from fingerprint_machine.application.linux_devices import _ID_FILES
+    >>> set(_ID_FILES) == set(DeviceBus)
+    True
 """
 
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final
 
 from ..domain.edid import decode_edid
 from ..domain.kernel_tables import parse_modules
@@ -26,7 +33,7 @@ from .linux_files import ATTRIBUTE_MAX_BYTES, optional_dir, text
 from .linux_values import link_name, optional
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Mapping
 
     from ..domain.json_types import JsonObject, JsonValue
     from .machine_ports import LinuxSource, LinuxSources
@@ -57,16 +64,18 @@ class DeviceBus(StrEnum):
 
 
 #: The id files each bus publishes per device; a device that lacks one simply has no such key.
-_ID_FILES: dict[DeviceBus, tuple[str, ...]] = {
-    DeviceBus.PCI: ("vendor", "device", "subsystem_vendor", "subsystem_device", "class", "revision"),
-    DeviceBus.USB: ("idVendor", "idProduct", "bcdDevice", "bDeviceClass", "manufacturer", "product", "serial"),
-    DeviceBus.VIRTIO: ("vendor", "device", "features"),
-    DeviceBus.VMBUS: ("class_id", "device_id", "vendor", "device"),
-    DeviceBus.SCSI: ("vendor", "model", "rev", "type", "scsi_level"),
-    DeviceBus.INPUT: ("name", "phys", "uniq", "id/bustype", "id/vendor", "id/product", "id/version"),
-    DeviceBus.PLATFORM: (),
-    DeviceBus.ACPI: ("path", "hid", "uid", "adr", "status"),
-}
+_ID_FILES: Final[Mapping[DeviceBus, tuple[str, ...]]] = MappingProxyType(
+    {
+        DeviceBus.PCI: ("vendor", "device", "subsystem_vendor", "subsystem_device", "class", "revision"),
+        DeviceBus.USB: ("idVendor", "idProduct", "bcdDevice", "bDeviceClass", "manufacturer", "product", "serial"),
+        DeviceBus.VIRTIO: ("vendor", "device", "features"),
+        DeviceBus.VMBUS: ("class_id", "device_id", "vendor", "device"),
+        DeviceBus.SCSI: ("vendor", "model", "rev", "type", "scsi_level"),
+        DeviceBus.INPUT: ("name", "phys", "uniq", "id/bustype", "id/vendor", "id/product", "id/version"),
+        DeviceBus.PLATFORM: (),
+        DeviceBus.ACPI: ("path", "hid", "uid", "adr", "status"),
+    }
+)
 
 
 def _ids(system: LinuxSource, base: str, files: tuple[str, ...]) -> JsonObject:

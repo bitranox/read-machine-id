@@ -15,28 +15,33 @@ Contents:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from .json_types import JsonObject
 
 #: A method argument: text, a number or a flag, typed by the method's schema.
 type CimArgument = str | int | bool
 
 # Win32_EncryptableVolume.GetKeyProtectorType's KeyProtectorType values, from its documentation.
-_KEY_PROTECTOR_TYPES: dict[int, str] = {
-    0: "unknown or other",
-    1: "trusted platform module",
-    2: "external key",
-    3: "numerical password",
-    4: "tpm and pin",
-    5: "tpm and startup key",
-    6: "tpm and pin and startup key",
-    7: "public key",
-    8: "passphrase",
-    9: "tpm certificate",
-    10: "cng protector",
-}
+_KEY_PROTECTOR_TYPES: Final[Mapping[int, str]] = MappingProxyType(
+    {
+        0: "unknown or other",
+        1: "trusted platform module",
+        2: "external key",
+        3: "numerical password",
+        4: "tpm and pin",
+        5: "tpm and startup key",
+        6: "tpm and pin and startup key",
+        7: "public key",
+        8: "passphrase",
+        9: "tpm certificate",
+        10: "cng protector",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)

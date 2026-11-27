@@ -11,6 +11,12 @@ Contents:
     * :class:`PropertyKey` - a format GUID and a property id.
     * :class:`DeviceProperty` - the properties read, each with its key.
     * :class:`PropertyType`, :func:`decode_property` - a property's value as JSON.
+
+Every property has its key and every property type its decoder:
+
+    >>> from fingerprint_machine.domain.devprops import _DECODERS, _KEYS
+    >>> set(_KEYS) == set(DeviceProperty), set(_DECODERS) == set(PropertyType)
+    (True, True)
 """
 
 from __future__ import annotations
@@ -18,10 +24,11 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final, NamedTuple
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
 
     from .json_types import JsonValue
 
@@ -70,29 +77,31 @@ class DeviceProperty(StrEnum):
         return _KEYS[self]
 
 
-_KEYS: dict[DeviceProperty, PropertyKey] = {
-    DeviceProperty.PARENT: PropertyKey(_RELATIONS, 8),
-    DeviceProperty.LOCATION_PATHS: PropertyKey(_DEVICE, 37),
-    DeviceProperty.LOCATION_INFO: PropertyKey(_DEVICE, 15),
-    DeviceProperty.BUS_NUMBER: PropertyKey(_DEVICE, 23),
-    DeviceProperty.ADDRESS: PropertyKey(_DEVICE, 30),
-    DeviceProperty.PCI_DEVICE_TYPE: PropertyKey(_PCI, 1),
-    DeviceProperty.PCI_CURRENT_SPEED_AND_MODE: PropertyKey(_PCI, 2),
-    DeviceProperty.PCI_BASE_CLASS: PropertyKey(_PCI, 3),
-    DeviceProperty.PCI_SUB_CLASS: PropertyKey(_PCI, 4),
-    DeviceProperty.PCI_PROG_IF: PropertyKey(_PCI, 5),
-    DeviceProperty.PCI_CURRENT_PAYLOAD_SIZE: PropertyKey(_PCI, 6),
-    DeviceProperty.PCI_MAX_PAYLOAD_SIZE: PropertyKey(_PCI, 7),
-    DeviceProperty.PCI_MAX_READ_REQUEST_SIZE: PropertyKey(_PCI, 8),
-    DeviceProperty.PCI_CURRENT_LINK_SPEED: PropertyKey(_PCI, 9),
-    DeviceProperty.PCI_CURRENT_LINK_WIDTH: PropertyKey(_PCI, 10),
-    DeviceProperty.PCI_MAX_LINK_SPEED: PropertyKey(_PCI, 11),
-    DeviceProperty.PCI_MAX_LINK_WIDTH: PropertyKey(_PCI, 12),
-    DeviceProperty.PCI_EXPRESS_SPEC_VERSION: PropertyKey(_PCI, 13),
-    DeviceProperty.PCI_INTERRUPT_SUPPORT: PropertyKey(_PCI, 14),
-    DeviceProperty.PCI_INTERRUPT_MESSAGE_MAXIMUM: PropertyKey(_PCI, 15),
-    DeviceProperty.PCI_BAR_TYPES: PropertyKey(_PCI, 16),
-}
+_KEYS: Final[Mapping[DeviceProperty, PropertyKey]] = MappingProxyType(
+    {
+        DeviceProperty.PARENT: PropertyKey(_RELATIONS, 8),
+        DeviceProperty.LOCATION_PATHS: PropertyKey(_DEVICE, 37),
+        DeviceProperty.LOCATION_INFO: PropertyKey(_DEVICE, 15),
+        DeviceProperty.BUS_NUMBER: PropertyKey(_DEVICE, 23),
+        DeviceProperty.ADDRESS: PropertyKey(_DEVICE, 30),
+        DeviceProperty.PCI_DEVICE_TYPE: PropertyKey(_PCI, 1),
+        DeviceProperty.PCI_CURRENT_SPEED_AND_MODE: PropertyKey(_PCI, 2),
+        DeviceProperty.PCI_BASE_CLASS: PropertyKey(_PCI, 3),
+        DeviceProperty.PCI_SUB_CLASS: PropertyKey(_PCI, 4),
+        DeviceProperty.PCI_PROG_IF: PropertyKey(_PCI, 5),
+        DeviceProperty.PCI_CURRENT_PAYLOAD_SIZE: PropertyKey(_PCI, 6),
+        DeviceProperty.PCI_MAX_PAYLOAD_SIZE: PropertyKey(_PCI, 7),
+        DeviceProperty.PCI_MAX_READ_REQUEST_SIZE: PropertyKey(_PCI, 8),
+        DeviceProperty.PCI_CURRENT_LINK_SPEED: PropertyKey(_PCI, 9),
+        DeviceProperty.PCI_CURRENT_LINK_WIDTH: PropertyKey(_PCI, 10),
+        DeviceProperty.PCI_MAX_LINK_SPEED: PropertyKey(_PCI, 11),
+        DeviceProperty.PCI_MAX_LINK_WIDTH: PropertyKey(_PCI, 12),
+        DeviceProperty.PCI_EXPRESS_SPEC_VERSION: PropertyKey(_PCI, 13),
+        DeviceProperty.PCI_INTERRUPT_SUPPORT: PropertyKey(_PCI, 14),
+        DeviceProperty.PCI_INTERRUPT_MESSAGE_MAXIMUM: PropertyKey(_PCI, 15),
+        DeviceProperty.PCI_BAR_TYPES: PropertyKey(_PCI, 16),
+    }
+)
 
 #: The PCI driver's own properties of a function, in the order a reading lists them.
 PCI_PROPERTIES = tuple(p for p in DeviceProperty if p.key.fmtid == _PCI)
@@ -116,16 +125,25 @@ class PropertyType(IntEnum):
     STRING_LIST = 0x2012
 
 
-_INTEGERS = {
-    PropertyType.BYTE: (1, False),
-    PropertyType.INT16: (2, True),
-    PropertyType.UINT16: (2, False),
-    PropertyType.INT32: (4, True),
-    PropertyType.UINT32: (4, False),
-    PropertyType.INT64: (8, True),
-    PropertyType.UINT64: (8, False),
-    PropertyType.FILETIME: (8, False),
-}
+class _IntegerLayout(NamedTuple):
+    """How an integer property is stored: its width in bytes and whether it is signed."""
+
+    size: int
+    signed: bool
+
+
+_INTEGERS: Final[Mapping[PropertyType, _IntegerLayout]] = MappingProxyType(
+    {
+        PropertyType.BYTE: _IntegerLayout(size=1, signed=False),
+        PropertyType.INT16: _IntegerLayout(size=2, signed=True),
+        PropertyType.UINT16: _IntegerLayout(size=2, signed=False),
+        PropertyType.INT32: _IntegerLayout(size=4, signed=True),
+        PropertyType.UINT32: _IntegerLayout(size=4, signed=False),
+        PropertyType.INT64: _IntegerLayout(size=8, signed=True),
+        PropertyType.UINT64: _IntegerLayout(size=8, signed=False),
+        PropertyType.FILETIME: _IntegerLayout(size=8, signed=False),
+    }
+)
 
 
 def _strings(raw: bytes) -> list[str]:
@@ -158,19 +176,28 @@ def _hex(raw: bytes) -> JsonValue:
     return raw.hex()
 
 
-_DECODERS: dict[PropertyType, Callable[[bytes], JsonValue]] = {
-    PropertyType.STRING: _string,
-    PropertyType.STRING_LIST: _string_list,
-    PropertyType.BOOLEAN: _boolean,
-    PropertyType.GUID: _guid,
-}
+def _integer_decoder(kind: PropertyType) -> Callable[[bytes], JsonValue]:
+    layout = _INTEGERS[kind]
+
+    def decode(raw: bytes) -> JsonValue:
+        if len(raw) < layout.size:
+            raise ValueError(f"a {kind.name} property is {layout.size} bytes, got {len(raw)}")
+        return int.from_bytes(raw[: layout.size], "little", signed=layout.signed)
+
+    return decode
 
 
-def _integer(kind: PropertyType, raw: bytes) -> int:
-    size, signed = _INTEGERS[kind]
-    if len(raw) < size:
-        raise ValueError(f"a {kind.name} property is {size} bytes, got {len(raw)}")
-    return int.from_bytes(raw[:size], "little", signed=signed)
+#: The decoder of every property type; a binary property is kept as hex.
+_DECODERS: Final[Mapping[PropertyType, Callable[[bytes], JsonValue]]] = MappingProxyType(
+    {
+        PropertyType.STRING: _string,
+        PropertyType.STRING_LIST: _string_list,
+        PropertyType.BOOLEAN: _boolean,
+        PropertyType.GUID: _guid,
+        PropertyType.BINARY: _hex,
+        **{kind: _integer_decoder(kind) for kind in _INTEGERS},
+    }
+)
 
 
 def decode_property(type_code: int, raw: bytes) -> JsonValue:
@@ -194,10 +221,7 @@ def decode_property(type_code: int, raw: bytes) -> JsonValue:
     """
     if type_code not in PropertyType:
         return {"type": f"0x{type_code:04x}", "hex": raw.hex()}
-    kind = PropertyType(type_code)
-    if kind in _INTEGERS:
-        return _integer(kind, raw)
-    return _DECODERS.get(kind, _hex)(raw)
+    return _DECODERS[PropertyType(type_code)](raw)
 
 
 __all__ = ["PCI_PROPERTIES", "DeviceProperty", "PropertyKey", "PropertyType", "decode_property"]

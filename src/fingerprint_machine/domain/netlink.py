@@ -16,6 +16,12 @@ Contents:
     * :func:`message_type`, :func:`error_number` - what a message is.
     * :func:`decode_link`, :func:`decode_address`, :func:`decode_route`, :func:`decode_neighbour`.
     * :func:`interface_flags`, :func:`hardware_type` - the numbers sysfs and netlink share, by name.
+
+Every dump has its request header:
+
+    >>> from fingerprint_machine.domain.netlink import _REQUEST_BODY
+    >>> set(_REQUEST_BODY) == set(DumpKind)
+    True
 """
 
 from __future__ import annotations
@@ -23,7 +29,8 @@ from __future__ import annotations
 import ipaddress
 import struct
 from enum import IntEnum
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
@@ -62,14 +69,16 @@ class DumpKind(IntEnum):
 
 
 # The family header each request carries, all zero (every family, every interface).
-_REQUEST_BODY = {
-    DumpKind.LINKS: _IFINFO.size,
-    DumpKind.ADDRESSES: _IFADDR.size,
-    DumpKind.ROUTES: _RTMSG.size,
-    DumpKind.NEIGHBOURS: _NDMSG.size,
-}
+_REQUEST_BODY = MappingProxyType(
+    {
+        DumpKind.LINKS: _IFINFO.size,
+        DumpKind.ADDRESSES: _IFADDR.size,
+        DumpKind.ROUTES: _RTMSG.size,
+        DumpKind.NEIGHBOURS: _NDMSG.size,
+    }
+)
 
-_FAMILIES = {0: "unspec", 2: "ipv4", 7: "bridge", 10: "ipv6", 17: "packet", 28: "mpls"}
+_FAMILIES = MappingProxyType({0: "unspec", 2: "ipv4", 7: "bridge", 10: "ipv6", 17: "packet", 28: "mpls"})
 # IFF_* in bit order (include/uapi/linux/if.h).
 _IFF = (
     "up", "broadcast", "debug", "loopback", "pointopoint", "notrailers", "running", "noarp",
@@ -77,24 +86,24 @@ _IFF = (
     "lower_up", "dormant", "echo",
 )  # fmt: skip
 # ARPHRD_* (include/uapi/linux/if_arp.h): the hardware types a fingerprint meets.
-_ARPHRD = {
+_ARPHRD = MappingProxyType({
     1: "ether", 24: "ieee1394", 32: "infiniband", 512: "ppp", 768: "tunnel", 769: "tunnel6",
     772: "loopback", 776: "sit", 778: "ipgre", 801: "ieee80211", 803: "ieee80211_radiotap",
     823: "ip6gre", 65534: "none",
-}  # fmt: skip
+})  # fmt: skip
 _OPERSTATES = ("unknown", "notpresent", "down", "lowerlayerdown", "testing", "dormant", "up")
 # IFA_F_* in bit order (include/uapi/linux/if_addr.h).
 _IFA_FLAG_NAMES = (
     "secondary", "nodad", "optimistic", "dadfailed", "homeaddress", "deprecated", "tentative",
     "permanent", "managetempaddr", "noprefixroute", "mcautojoin", "stable_privacy",
 )  # fmt: skip
-_SCOPES = {0: "universe", 200: "site", 253: "link", 254: "host", 255: "nowhere"}
-_TABLES = {253: "default", 254: "main", 255: "local"}
-_PROTOCOLS = {
+_SCOPES = MappingProxyType({0: "universe", 200: "site", 253: "link", 254: "host", 255: "nowhere"})
+_TABLES = MappingProxyType({253: "default", 254: "main", 255: "local"})
+_PROTOCOLS = MappingProxyType({
     0: "unspec", 1: "redirect", 2: "kernel", 3: "boot", 4: "static", 9: "ra", 11: "zebra",
     12: "bird", 16: "dhcp", 18: "keepalived", 42: "babel", 186: "bgp", 187: "isis", 188: "ospf",
     189: "rip",
-}  # fmt: skip
+})  # fmt: skip
 _ROUTE_TYPES = (
     "unspec", "unicast", "local", "broadcast", "anycast", "multicast", "blackhole",
     "unreachable", "prohibit", "throw", "nat", "xresolve",
@@ -237,16 +246,30 @@ def _family(value: int) -> str:
     return _named(value, _FAMILIES)
 
 
-def _fields(attrs: Mapping[int, bytes], spec: Mapping[str, tuple[int, Callable[[bytes], JsonValue]]]) -> JsonObject:
+class _Attr(NamedTuple):
+    """One attribute a message may carry: its type number and how its value is decoded."""
+
+    kind: int
+    decode: Callable[[bytes], JsonValue]
+
+
+class _Message(NamedTuple):
+    """A message split into its fixed family header (unpacked) and its attribute bytes."""
+
+    header: tuple[int, ...]
+    attributes: bytes
+
+
+def _fields(attrs: Mapping[int, bytes], spec: Mapping[str, _Attr]) -> JsonObject:
     """Return each attribute ``spec`` names that the message carries, decoded."""
-    return {name: decode(attrs[kind]) for name, (kind, decode) in spec.items() if kind in attrs}
+    return {name: attr.decode(attrs[attr.kind]) for name, attr in spec.items() if attr.kind in attrs}
 
 
-def _body(message: bytes, header: struct.Struct, kind: str) -> tuple[tuple[int, ...], bytes]:
+def _body(message: bytes, header: struct.Struct, kind: str) -> _Message:
     start = _HEADER.size
     if len(message) < start + header.size:
         raise ValueError(f"netlink {kind} message shorter than its header")
-    return header.unpack_from(message, start), message[start + header.size :]
+    return _Message(header=header.unpack_from(message, start), attributes=message[start + header.size :])
 
 
 def _link_kind(raw: bytes) -> JsonValue:
@@ -254,38 +277,48 @@ def _link_kind(raw: bytes) -> JsonValue:
     return _string(info[1]) if 1 in info else None  # IFLA_INFO_KIND
 
 
+def _operstate(raw: bytes) -> JsonValue:
+    return _indexed(raw[0], _OPERSTATES)
+
+
+def _hex_id(raw: bytes) -> JsonValue:
+    return raw.hex()
+
+
 def _alt_names(raw: bytes) -> JsonValue:
     names: list[JsonValue] = [_string(v) for v in _all_attributes(raw, 53)]  # IFLA_ALT_IFNAME
     return names
 
 
-_LINK_ATTRS: Mapping[str, tuple[int, Callable[[bytes], JsonValue]]] = {
-    "name": (3, _string),
-    "address": (1, _mac),
-    "broadcast": (2, _mac),
-    "permanent_address": (54, _mac),
-    "mtu": (4, _u32),
-    "min_mtu": (50, _u32),
-    "max_mtu": (51, _u32),
-    "tx_queue_len": (13, _u32),
-    "num_tx_queues": (31, _u32),
-    "num_rx_queues": (32, _u32),
-    "gso_max_size": (41, _u32),
-    "gso_max_segs": (40, _u32),
-    "operstate": (16, lambda raw: _indexed(raw[0], _OPERSTATES)),
-    "qdisc": (6, _string),
-    "alias": (20, _string),
-    "group": (27, _u32),
-    "link_index": (5, _u32),
-    "master_index": (10, _u32),
-    "kind": (18, _link_kind),
-    "alt_names": (52, _alt_names),
-    "parent_device": (56, _string),
-    "parent_bus": (57, _string),
-    "phys_port_name": (38, _string),
-    "phys_port_id": (34, lambda raw: raw.hex()),
-    "phys_switch_id": (36, lambda raw: raw.hex()),
-}
+_LINK_ATTRS: Mapping[str, _Attr] = MappingProxyType(
+    {
+        "name": _Attr(kind=3, decode=_string),
+        "address": _Attr(kind=1, decode=_mac),
+        "broadcast": _Attr(kind=2, decode=_mac),
+        "permanent_address": _Attr(kind=54, decode=_mac),
+        "mtu": _Attr(kind=4, decode=_u32),
+        "min_mtu": _Attr(kind=50, decode=_u32),
+        "max_mtu": _Attr(kind=51, decode=_u32),
+        "tx_queue_len": _Attr(kind=13, decode=_u32),
+        "num_tx_queues": _Attr(kind=31, decode=_u32),
+        "num_rx_queues": _Attr(kind=32, decode=_u32),
+        "gso_max_size": _Attr(kind=41, decode=_u32),
+        "gso_max_segs": _Attr(kind=40, decode=_u32),
+        "operstate": _Attr(kind=16, decode=_operstate),
+        "qdisc": _Attr(kind=6, decode=_string),
+        "alias": _Attr(kind=20, decode=_string),
+        "group": _Attr(kind=27, decode=_u32),
+        "link_index": _Attr(kind=5, decode=_u32),
+        "master_index": _Attr(kind=10, decode=_u32),
+        "kind": _Attr(kind=18, decode=_link_kind),
+        "alt_names": _Attr(kind=52, decode=_alt_names),
+        "parent_device": _Attr(kind=56, decode=_string),
+        "parent_bus": _Attr(kind=57, decode=_string),
+        "phys_port_name": _Attr(kind=38, decode=_string),
+        "phys_port_id": _Attr(kind=34, decode=_hex_id),
+        "phys_switch_id": _Attr(kind=36, decode=_hex_id),
+    }
+)
 
 
 def decode_link(message: bytes) -> JsonObject:
@@ -294,7 +327,9 @@ def decode_link(message: bytes) -> JsonObject:
     Raises:
         ValueError: the message is cut short.
     """
-    (family, kind, index, flags, _), data = _body(message, _IFINFO, "link")
+    parts = _body(message, _IFINFO, "link")
+    family, kind, index, flags, _ = parts.header
+    data = parts.attributes
     del family
     return {
         "index": index,
@@ -304,12 +339,14 @@ def decode_link(message: bytes) -> JsonObject:
     }
 
 
-_ADDRESS_ATTRS: Mapping[str, tuple[int, Callable[[bytes], JsonValue]]] = {
-    "address": (1, _ip),
-    "local": (2, _ip),
-    "label": (3, _string),
-    "broadcast": (4, _ip),
-}
+_ADDRESS_ATTRS: Mapping[str, _Attr] = MappingProxyType(
+    {
+        "address": _Attr(kind=1, decode=_ip),
+        "local": _Attr(kind=2, decode=_ip),
+        "label": _Attr(kind=3, decode=_string),
+        "broadcast": _Attr(kind=4, decode=_ip),
+    }
+)
 
 
 def decode_address(message: bytes) -> JsonObject:
@@ -318,8 +355,9 @@ def decode_address(message: bytes) -> JsonObject:
     Raises:
         ValueError: the message is cut short.
     """
-    (family, prefix, flags, scope, index), data = _body(message, _IFADDR, "address")
-    attrs = _attributes(data)
+    parts = _body(message, _IFADDR, "address")
+    family, prefix, flags, scope, index = parts.header
+    attrs = _attributes(parts.attributes)
     all_flags = _u32(attrs[_IFA_FLAGS]) if _IFA_FLAGS in attrs else flags  # IFA_FLAGS widens the 8-bit field
     return {
         "index": index,
@@ -339,13 +377,15 @@ def _prefix(attrs: Mapping[int, bytes], kind: int, length: int, family: int) -> 
     return None
 
 
-_ROUTE_ATTRS: Mapping[str, tuple[int, Callable[[bytes], JsonValue]]] = {
-    "gateway": (5, _ip),
-    "output_index": (4, _u32),
-    "input_index": (3, _u32),
-    "preferred_source": (7, _ip),
-    "priority": (6, _u32),
-}
+_ROUTE_ATTRS: Mapping[str, _Attr] = MappingProxyType(
+    {
+        "gateway": _Attr(kind=5, decode=_ip),
+        "output_index": _Attr(kind=4, decode=_u32),
+        "input_index": _Attr(kind=3, decode=_u32),
+        "preferred_source": _Attr(kind=7, decode=_ip),
+        "priority": _Attr(kind=6, decode=_u32),
+    }
+)
 
 
 def decode_route(message: bytes) -> JsonObject:
@@ -354,8 +394,9 @@ def decode_route(message: bytes) -> JsonObject:
     Raises:
         ValueError: the message is cut short.
     """
-    (family, dst_len, src_len, _, table, protocol, scope, kind, _), data = _body(message, _RTMSG, "route")
-    attrs = _attributes(data)
+    parts = _body(message, _RTMSG, "route")
+    family, dst_len, src_len, _, table, protocol, scope, kind, _ = parts.header
+    attrs = _attributes(parts.attributes)
     table_id = _u32(attrs[_RTA_TABLE]) if _RTA_TABLE in attrs else table  # RTA_TABLE holds tables past 255
     return {
         "family": _family(family),
@@ -375,8 +416,9 @@ def decode_neighbour(message: bytes) -> JsonObject:
     Raises:
         ValueError: the message is cut short.
     """
-    (family, index, state, _, _), data = _body(message, _NDMSG, "neighbour")
-    attrs = _attributes(data)
+    parts = _body(message, _NDMSG, "neighbour")
+    family, index, state, _, _ = parts.header
+    attrs = _attributes(parts.attributes)
     return {
         "index": index,
         "family": _family(family),

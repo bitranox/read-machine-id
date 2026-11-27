@@ -1,6 +1,7 @@
 """Pure helpers that turn raw Windows answers into identity values.
 
 Contents:
+    * :data:`TPM_VERSION_NAMES` - the TPM family numbers by the version name Windows gives them.
     * :func:`instance_serial` - the serial number part of a PnP instance id.
     * :func:`vmware_pvscsi_sas_wwid` - a VMware PVSCSI controller's sasWWID from its PCI serial.
     * :func:`vmware_pvscsi_sas_wwid_from_dsn` - the same, from PCI ids and a DSN (Linux).
@@ -17,6 +18,7 @@ from __future__ import annotations
 import re
 import struct
 from enum import IntEnum
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -51,7 +53,8 @@ _MSDM_KEY_LENGTH = 29
 
 # TBS TPM_DEVICE_INFO: structVersion, tpmVersion, tpmInterfaceType, tpmImpRevision (u32 each).
 _TBS_DEVICE_INFO = struct.Struct("<IIII")
-_TPM_VERSIONS = {1: "1.2", 2: "2.0"}
+#: The TPM family major numbers by the version name the TPM Base Services give them.
+TPM_VERSION_NAMES = MappingProxyType({1: "1.2", 2: "2.0"})
 # S-1-5-21-<a>-<b>-<c>-<RID>: a local account SID has seven dashes.
 _LOCAL_SID_DASHES = 7
 
@@ -201,7 +204,7 @@ def decode_tbs_device_info(raw: bytes) -> JsonObject:
     struct_version, version, interface, revision = _TBS_DEVICE_INFO.unpack_from(raw)
     return {
         "struct_version": struct_version,
-        "tpm_version": _TPM_VERSIONS.get(version, f"unknown({version})"),
+        "tpm_version": TPM_VERSION_NAMES.get(version, f"unknown({version})"),
         "interface": _interface_name(interface),
         "implementation_revision": revision,
     }
@@ -255,6 +258,7 @@ def msdm_product_key(table: bytes) -> JsonObject:
 
 
 __all__ = [
+    "TPM_VERSION_NAMES",
     "TPM_WITHHELD",
     "WITHHELD",
     "WITHHELD_VALUE_NAMES",

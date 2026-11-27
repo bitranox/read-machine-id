@@ -19,7 +19,7 @@ Contents:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from ..domain.enums import MachineOs
 from ..domain.identity import (
@@ -348,10 +348,17 @@ def default_sections(src: MachineSources) -> list[Section]:
     return [s for s in Section if s in LINUX_SECTIONS]
 
 
-def _read_body(src: MachineSources, chosen: Sequence[Section]) -> tuple[MachineOs, JsonObject]:
+class _Body(NamedTuple):
+    """The sections read from a machine, and the OS they were read as."""
+
+    machine_os: MachineOs
+    sections: JsonObject
+
+
+def _read_body(src: MachineSources, chosen: Sequence[Section]) -> _Body:
     if isinstance(src, WindowsSources):
-        return MachineOs.WINDOWS, {s.value: read_section(src, s) for s in chosen}
-    return MachineOs.LINUX, {s.value: read_linux_section(src, s) for s in chosen}
+        return _Body(MachineOs.WINDOWS, {s.value: read_section(src, s) for s in chosen})
+    return _Body(MachineOs.LINUX, {s.value: read_linux_section(src, s) for s in chosen})
 
 
 def collect(
@@ -375,19 +382,19 @@ def collect(
         ``meta``, ``summary`` and one key per section read.
     """
     chosen = default_sections(src) if sections is None else list(sections)
-    machine_os, body = _read_body(src, chosen)
+    body = _read_body(src, chosen)
     reading: JsonObject = {
         "meta": {
             "label": label,
             "tool": "fingerprint-machine",
             "tool_version": tool_version,
             "schema_version": SCHEMA_VERSION,
-            "os": machine_os.value,
+            "os": body.machine_os.value,
             "collected_at": collected_at,
             "sections": [s.value for s in chosen],
         },
-        "summary": summarize(body, machine_os=machine_os),
-        **body,
+        "summary": summarize(body.sections, machine_os=body.machine_os),
+        **body.sections,
     }
     masked = mask_product_keys(reading)
     return masked if isinstance(masked, dict) else reading

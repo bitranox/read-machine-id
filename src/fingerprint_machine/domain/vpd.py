@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -60,7 +61,7 @@ class CodeSet(StrEnum):
 
 _TYPES = tuple(DesignatorType)
 _ASSOCIATIONS = tuple(Association)
-_CODE_SETS = {1: CodeSet.BINARY, 2: CodeSet.ASCII, 3: CodeSet.UTF8}
+_CODE_SETS = MappingProxyType({1: CodeSet.BINARY, 2: CodeSet.ASCII, 3: CodeSet.UTF8})
 # SPC-5 table 589: the protocol identifier, meaningful only when PIV is set.
 _PROTOCOLS = (
     "fibre_channel", "parallel_scsi", "ssa", "ieee1394", "srp", "iscsi",
