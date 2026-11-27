@@ -48,6 +48,11 @@ def _linux(root: Path) -> JsonObject:
     return _reading(lambda: build_testing(sources=LinuxSources(system=source, cpuid=source)))
 
 
+# The Linux reading comes from a synthetic sysfs tree whose file names hold PCI addresses
+# (0000:03:00.0) as Linux does; Windows refuses ':' in a file name, so these tests run on POSIX.
+# The per-OS builders are tested on every OS in test_summary_builders.py.
+COLON_FILE_NAMES = pytest.mark.os_posix
+
 #: Hardware identity values a spoofing comparison turns on; each must be read on both OSes.
 _IDENTITY = (
     "summary.system.uuid",
@@ -103,7 +108,7 @@ def _rows(root: Path) -> dict[str, FieldRow]:
     return {r.path: r for r in compare_readings(windows, linux).rows}
 
 
-@pytest.mark.os_agnostic
+@COLON_FILE_NAMES
 def test_both_oses_give_the_summary_the_same_fields(tmp_path: Path) -> None:
     windows, linux = _obj(_windows()["summary"]), _obj(_linux(tmp_path)["summary"])
     assert list(windows) == list(linux)
@@ -115,7 +120,7 @@ def test_both_oses_give_the_summary_the_same_fields(tmp_path: Path) -> None:
         assert list(_obj(win[0])) == list(_obj(lin[0]))
 
 
-@pytest.mark.os_agnostic
+@COLON_FILE_NAMES
 def test_one_guest_read_under_both_oses_agrees_on_every_hardware_identity_value(tmp_path: Path) -> None:
     rows = _rows(tmp_path)
     for path in _IDENTITY:
@@ -125,7 +130,7 @@ def test_one_guest_read_under_both_oses_agrees_on_every_hardware_identity_value(
         assert (path, row.status) == (path, "same"), (row.original, row.actual)
 
 
-@pytest.mark.os_agnostic
+@COLON_FILE_NAMES
 def test_only_operating_system_facts_differ_between_the_two_readings(tmp_path: Path) -> None:
     differing = {
         path for path, row in _rows(tmp_path).items()
@@ -134,7 +139,7 @@ def test_only_operating_system_facts_differ_between_the_two_readings(tmp_path: P
     assert differing == _EXPECTED_DIFFERENCES
 
 
-@pytest.mark.os_agnostic
+@COLON_FILE_NAMES
 def test_a_changed_system_uuid_is_reported_with_where_it_comes_from(tmp_path: Path) -> None:
     linux = _linux(tmp_path)
     _obj(_obj(linux["summary"])["system"])["uuid"] = "00000000-0000-0000-0000-000000000001"
