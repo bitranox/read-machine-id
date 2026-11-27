@@ -26,7 +26,6 @@ This project employs the following security measures in CI:
 - **Bandit** -- static analysis for common Python security issues
 - **CodeQL** -- GitHub code scanning (weekly schedule)
 - **pip-audit** -- dependency vulnerability scanning against the OSV database
-- **Snyk** -- continuous dependency monitoring
 - **Ruff security rules** -- S (flake8-bandit) and B (flake8-bugbear) rulesets
 
 ## Dependency Policy
