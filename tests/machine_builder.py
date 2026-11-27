@@ -286,6 +286,7 @@ def machine_document(*, product_id: str = "00330-80000-00000-AA111", serial: str
     extras = windows_extras(nic=nic_pnp, scsi=scsi_pnp)
     return {
         "cim": {**cim, **_obj(extras["cim"])},
+        "cim_methods": extras["cim_methods"],
         "registry": {**registry, **_obj(extras["registry"])},
         "firmware": firmware,
         "cpuid": cpuid_document(),

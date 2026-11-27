@@ -10,14 +10,13 @@ results; Windows Hello for Business policy and the credential providers.
 A policy key exists only where a policy was set: its absence is recorded as None (nothing
 configured), not as an error.
 
-Two things a reading never carries: BitLocker recovery material and protector ids (the CIM
-properties read here hold neither; the protectors are reachable only through methods, which are
-not called), and TPM authorization values (withheld if Windows cached one in the registry).
+Two things a reading never carries: BitLocker recovery material and protector ids (protectors are
+recorded by type only), and TPM authorization values (withheld if Windows cached one in the
+registry).
 
-``Win32_EncryptableVolume`` and ``Win32_Tpm`` answer some values only through methods
-(``GetLockStatus``, ``GetConversionStatus``'s percentage, ``GetKeyProtectors``, ``IsReady``,
-``IsOwned``, the lockout state); the reading takes their properties, which is all a property
-query can give.
+``Win32_EncryptableVolume`` and ``Win32_Tpm`` answer some values only through methods (lock state,
+encryption percentage, key protectors, readiness, ownership, the lockout state): each volume and
+the TPM carry those under ``methods`` (see :mod:`.windows_cim_methods`).
 
 Contents:
     * :data:`SECURITY_READERS` - the section's items.
@@ -30,6 +29,7 @@ from typing import TYPE_CHECKING
 from ..domain.certificates import der_from_store_blob, describe_certificate
 from ..domain.identity import decode_tbs_device_info, withhold_tpm_authorization
 from .guard import guarded
+from .windows_cim_methods import bitlocker_volumes, tpm_with_methods
 from .windows_values import cim, optional_reg, optional_subkeys, optional_values, reg, values
 
 if TYPE_CHECKING:
@@ -39,8 +39,6 @@ if TYPE_CHECKING:
     from .machine_ports import WindowsSources
     from .windows_values import Reader
 
-_TPM = "root/cimv2/Security/MicrosoftTpm"
-_BITLOCKER = "root/cimv2/Security/MicrosoftVolumeEncryption"
 _DEVICE_GUARD = "root/Microsoft/Windows/DeviceGuard"
 _DEFENDER = "root/Microsoft/Windows/Defender"
 _STANDARD = "root/StandardCimv2"
@@ -117,13 +115,13 @@ SECURITY_READERS: Mapping[str, Reader] = {
     "secure_boot": reg(rf"{_SECURE_BOOT}\State"),
     "secure_boot_config": optional_reg(_SECURE_BOOT),
     "secure_boot_servicing": optional_reg(rf"{_SECURE_BOOT}\Servicing"),
-    "tpm": cim("Win32_Tpm", _TPM),
+    "tpm": tpm_with_methods,
     "tbs": _tbs,
     "ek_certificates": _ek_certificates,
     "tpm_service": _tpm_service,
     "device_guard": cim("Win32_DeviceGuard", _DEVICE_GUARD),
     "device_guard_config": optional_reg(rf"{_CONTROL}\DeviceGuard"),
-    "bitlocker": cim("Win32_EncryptableVolume", _BITLOCKER),
+    "bitlocker": bitlocker_volumes,
     "bitlocker_policy": optional_reg(rf"{_POLICIES}\FVE"),
     "lsa": reg(rf"{_CONTROL}\Lsa"),
     "kernel_dma_protection": _kernel_dma_protection,

@@ -435,7 +435,7 @@ requires-dist = [
     { name = "lib-registry", specifier = ">=3.4.0" },
     { name = "orjson", specifier = ">=3.13.0" },
     { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.10.1" },
-    { name = "pwshpy", specifier = ">=1.12.3" },
+    { name = "pwshpy", specifier = ">=1.13.0" },
     { name = "pydantic", specifier = ">=2.14.4" },
     { name = "pyright", extras = ["nodejs"], marker = "extra == 'dev'", specifier = ">=1.1.414" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.2.0" },
@@ -1042,7 +1042,7 @@ wheels = [
 
 [[package]]
 name = "pwshpy"
-version = "1.12.3"
+version = "1.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1061,9 +1061,9 @@ dependencies = [
     { name = "rich-click" },
     { name = "wmi", marker = "sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cb/b3/b8faed77f1ad61dba82c8f5c14b0250121281e96b3d955dc7f4f7fac972d/pwshpy-1.12.3.tar.gz", hash = "sha256:ba44440f5b52c0555fed4f38f0e66a10d90c819c2bb7e3ce805f6b85b3e16a87", size = 1043832, upload-time = "2026-11-20T17:57:53.731Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/eb/23f234745a73457edd1ddf8c66b4260d10734fb15860382bdf51f3143d6c/pwshpy-1.13.0.tar.gz", hash = "sha256:c2dec2ab072fbc247657160b97fb618a22b43355cfda72b232d9c296ec78239f", size = 1061974, upload-time = "2026-11-27T17:41:34.87Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/3f/1d5030f77a5a7d8cef666c254f39daaf52cc36e60fce9c131ac4dab1f014/pwshpy-1.12.3-py3-none-any.whl", hash = "sha256:9c97d411135c35de1486cb2ad18448b5a106345fa68aa839d82b89f58bd5fcbc", size = 493453, upload-time = "2026-11-20T17:57:51.885Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/3d/fc53608ad5b5a0263d7d2f95e1ad37593374a39fc3c62ded7661806b5086/pwshpy-1.13.0-py3-none-any.whl", hash = "sha256:3c5bf4a820ce173dc50f9de0692f7cfb72bedd5295dcadaaac3fa34deaff9507", size = 501947, upload-time = "2026-11-27T17:41:32.648Z" },
 ]
 
 [[package]]

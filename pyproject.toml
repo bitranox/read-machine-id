@@ -18,7 +18,7 @@ dependencies = [
     "pydantic>=2.14.4",
     # Parses --set override values (adapters/config/overrides.py); pwshpy needs it too.
     "orjson>=3.13.0",
-    "pwshpy>=1.12.3",
+    "pwshpy>=1.13.0",
     "lib-registry>=3.4.0",
     "cryptography>=50.0.2",
     "rich>=15.0.0",

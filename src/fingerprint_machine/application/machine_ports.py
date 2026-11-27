@@ -15,7 +15,8 @@ question never costs the whole reading.
 
 Contents:
     * :data:`RegistryData` - one registry value's data.
-    * :class:`PlatformSource` - CIM, firmware tables, device properties, NUMA and DMA guard (Windows).
+    * :class:`PlatformSource` - CIM classes and methods, firmware tables, device properties, NUMA
+      and DMA guard (Windows).
     * :class:`RegistrySource` - the registry (Windows).
     * :class:`LinuxSource` - files and kernel interfaces (Linux).
     * :class:`NetlinkDump` - the netlink tables :meth:`LinuxSource.netlink_dump` can list.
@@ -33,6 +34,7 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
 
+    from ..domain.cim_method import CimArgument, CimMethodAnswer
     from ..domain.cpuid import CpuidRegs
     from ..domain.devprops import DeviceProperty
     from ..domain.json_types import JsonObject, JsonValue
@@ -50,6 +52,22 @@ class PlatformSource(Protocol):
 
         Raises:
             SourceError: the class cannot be read here.
+        """
+        ...
+
+    def cim_method(
+        self,
+        class_name: str,
+        method_name: str,
+        *,
+        namespace: str = "root/cimv2",
+        where: str | None = None,
+        arguments: Mapping[str, CimArgument] | None = None,
+    ) -> list[CimMethodAnswer]:
+        """Run a read-only method on every instance of a CIM class ``where`` selects.
+
+        Raises:
+            SourceError: the method cannot be run here (not allowed, not found, refused).
         """
         ...
 

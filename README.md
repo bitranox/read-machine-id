@@ -161,7 +161,7 @@ The full sections follow the summary. `--section` reads any of them alone:
 | `hardware` | SCSI, IDE and USB controllers, CD drives, keyboards, mice, sound, monitors, serial ports, video |
 | `devices` | Every device instance under the registry's `Enum` key, present or not, with hardware ids, location and driver; the installed kernel drivers; each monitor's EDID |
 | `windows` | Operating system, the `CurrentVersion` key, device id, MachineGuid, machine SID, TCP/IP names, time zone, licensing, hotfixes, cloud join |
-| `security` | TPM (WMI, TBS, the TPM service's values), cached EK certificates (public fields only), Secure Boot state, policy and servicing, Device Guard and VBS, BitLocker per volume and its policy, LSA protection, Kernel DMA Protection, Defender, firewall profiles, UAC, SmartScreen, Windows Update policy and results, Windows Hello policy, credential providers |
+| `security` | TPM (WMI, TBS, the TPM service's values), cached EK certificates (public fields only), Secure Boot state, policy and servicing, Device Guard and VBS, BitLocker per volume (lock state, encryption percentage, key protector types) and its policy, TPM readiness and lockout state, LSA protection, Kernel DMA Protection, Defender, firewall profiles, UAC, SmartScreen, Windows Update policy and results, Windows Hello policy, credential providers |
 | `services` | Every service with its state and start mode |
 
 A question that cannot be answered (a missing WMI class, access denied) is recorded as
@@ -172,7 +172,8 @@ A question that cannot be answered (a missing WMI class, access denied) is recor
 - Product keys are cut to their last five characters wherever they turn up: the
   `OA3xOriginalProductKey` value, the ACPI MSDM table, licensing data. `DigitalProductId` and
   `DigitalProductId4` are left out.
-- BitLocker: status and method only, never recovery keys or protectors.
+- BitLocker: status, percentage, method and the TYPES of the key protectors, never a recovery key
+  or a protector id.
 - TPM authorization values Windows may have cached in the registry are replaced by a placeholder.
 - EK certificates: subject, issuer, serial number, validity and thumbprints, not the certificate
   itself.

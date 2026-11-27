@@ -77,10 +77,16 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 - Windows `devices`: the installed kernel drivers (`Win32_SystemDriver`) and every monitor's EDID
   decoded.
 - Windows `security`: Secure Boot policy and servicing state, the TPM service's values (a cached
-  TPM authorization value is withheld), BitLocker per volume and its policy (protector ids and
-  recovery material are never read), LSA protection, Kernel DMA Protection, Microsoft Defender,
+  TPM authorization value is withheld), BitLocker per volume and its policy (recovery material is
+  never read, key protector ids never recorded), LSA protection, Kernel DMA Protection, Microsoft Defender,
   the firewall profiles, UAC, SmartScreen, Windows Update policy and results, Windows Hello for
   Business policy and the credential providers.
+- Windows `security`: the values WMI answers only through methods, under each row's `methods`:
+  per BitLocker volume the conversion status with its encryption percentage, the lock and
+  protection status, the encryption method, the metadata version and its key protectors by type
+  (`trusted platform module`, `numerical password` and so on); for the TPM its readiness,
+  ownership, activation, the endorsement key's presence, the dictionary-attack parameters and the
+  lockout counter. One refused method is one recorded error. Needs pwshpy 1.13.0.
 
 ### Changed
 

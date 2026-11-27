@@ -19,6 +19,11 @@ PVSCSI_LOCATION_PATHS = ["PCIROOT(0)#PCI(1500)#PCI(0000)", r"ACPI(_SB_)#ACPI(PCI
 #: A TPM owner authorization the registry might cache; planted to prove a reading never carries it.
 PLANTED_OWNER_AUTH = "c3ludGhldGljLW93bmVyLWF1dGg="
 MONITOR = r"DISPLAY\VMW0001\5&2B3C4D5E&0&UID4352"
+#: The BitLocker volume's DeviceID, and the WQL that selects it.
+VOLUME_ID = "\\\\?\\Volume{00000000-0000-0000-0000-000000000001}\\"
+VOLUME_WHERE = "DeviceID = '" + VOLUME_ID.replace("\\", "\\\\") + "'"
+#: Key protector ids GetKeyProtectors answers; planted to prove a reading never carries one.
+PLANTED_PROTECTOR_IDS = ("{0B171000-C0DE-4000-8000-00000000A001}", "{0B171000-C0DE-4000-8000-00000000A002}")
 
 _ENUM = r"HKLM\SYSTEM\CurrentControlSet\Enum"
 _SCSI = r"HKLM\HARDWARE\DEVICEMAP\Scsi"
@@ -97,7 +102,7 @@ def _cim(*, nic: str, scsi: str) -> JsonObject:
             {"Name": "Public", "Enabled": 1},
         ],
         "root/cimv2/Security/MicrosoftVolumeEncryption:Win32_EncryptableVolume": [
-            {"DriveLetter": "C:", "ProtectionStatus": 0, "ConversionStatus": 0, "EncryptionMethod": 0}
+            {"DeviceID": VOLUME_ID, "DriveLetter": "C:", "ProtectionStatus": 1, "ConversionStatus": 1}
         ],
     }
 
@@ -199,6 +204,40 @@ def _security_keys() -> JsonObject:
     }
 
 
+def _answer(out: JsonObject, *, where: str | None = VOLUME_WHERE, arguments: JsonObject | None = None) -> JsonObject:
+    path = "Win32_Tpm=@" if where is None else f"Win32_EncryptableVolume.DeviceID={VOLUME_ID!r}"
+    return {"where": where, "arguments": arguments, "instance_path": path, "return_value": 0, "out": out}
+
+
+def _cim_methods() -> JsonObject:
+    """BitLocker answers for the one volume (no GetVersion: one refused method) and the TPM's."""
+    volume, tpm = (
+        "root/cimv2/Security/MicrosoftVolumeEncryption:Win32_EncryptableVolume",
+        "root/cimv2/Security/MicrosoftTpm:Win32_Tpm",
+    )
+    types = [
+        _answer({"KeyProtectorType": kind}, arguments={"VolumeKeyProtectorID": pid})
+        for pid, kind in zip(PLANTED_PROTECTOR_IDS, (1, 3), strict=True)
+    ]
+    return {
+        f"{volume}.GetConversionStatus": [_answer({"ConversionStatus": 1, "EncryptionPercentage": 100})],
+        f"{volume}.GetLockStatus": [_answer({"LockStatus": 0})],
+        f"{volume}.GetProtectionStatus": [_answer({"ProtectionStatus": 1})],
+        f"{volume}.GetEncryptionMethod": [_answer({"EncryptionMethod": 6})],
+        f"{volume}.GetKeyProtectors": [_answer({"VolumeKeyProtectorID": list[JsonValue](PLANTED_PROTECTOR_IDS)})],
+        f"{volume}.GetKeyProtectorType": list[JsonValue](types),
+        f"{tpm}.IsReady": [_answer({"IsReady": True}, where=None)],
+        f"{tpm}.IsOwned": [_answer({"IsOwned": True}, where=None)],
+        f"{tpm}.IsActivated": [_answer({"IsActivated": True}, where=None)],
+        f"{tpm}.IsEnabled": [_answer({"IsEnabled": True}, where=None)],
+        f"{tpm}.IsEndorsementKeyPairPresent": [_answer({"IsEndorsementKeyPairPresent": True}, where=None)],
+        f"{tpm}.GetDictionaryAttackParameters": [
+            _answer({"LockoutRecovery": 86400, "MaxTries": 31, "RecoveryTime": 600}, where=None)
+        ],
+        f"{tpm}.GetCapLockoutInfo": [_answer({"LockoutCounter": 0, "MaxTries": 31}, where=None)],
+    }
+
+
 def windows_extras(*, nic: str, scsi: str) -> JsonObject:
     """Return the recorded answers the Windows gap-fill readers ask for.
 
@@ -227,7 +266,23 @@ def windows_extras(*, nic: str, scsi: str) -> JsonObject:
         },
     }
     system: JsonObject = {"numa_nodes": [{"node": 0, "group": 0, "mask": "0xf"}], "kernel_dma_protection": False}
-    return {"cim": _cim(nic=nic, scsi=scsi), "registry": registry, "device_properties": properties, "system": system}
+    return {
+        "cim": _cim(nic=nic, scsi=scsi),
+        "cim_methods": _cim_methods(),
+        "registry": registry,
+        "device_properties": properties,
+        "system": system,
+    }
 
 
-__all__ = ["HOST", "MONITOR", "PLANTED_OWNER_AUTH", "PVSCSI_LOCATION_PATHS", "PVSCSI_PARENT", "windows_extras"]
+__all__ = [
+    "HOST",
+    "MONITOR",
+    "PLANTED_OWNER_AUTH",
+    "PLANTED_PROTECTOR_IDS",
+    "PVSCSI_LOCATION_PATHS",
+    "PVSCSI_PARENT",
+    "VOLUME_ID",
+    "VOLUME_WHERE",
+    "windows_extras",
+]

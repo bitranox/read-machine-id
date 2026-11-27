@@ -5,6 +5,9 @@ answers were saved. A recorded Windows machine is one document::
 
     {
       "cim":      {"<namespace>:<Class>": [ {property: value, ...}, ... ]},
+      "cim_methods": {"<namespace>:<Class>.<Method>": [
+                    {"where": "<WQL or null>", "arguments": {name: value} or null,
+                     "instance_path": "...", "return_value": 0, "out": {name: value}}, ...]},
       "registry": {"<KEY PATH>": {"values": {name: data}, "subkeys": [name, ...]}},
       "firmware": {"smbios_hex": "...", "smbios_version": "3.1",
                    "acpi_hex": ["...", ...], "tbs_hex": "...", "firmware_type": "UEFI"},
@@ -18,7 +21,10 @@ A registry value written as ``{"hex": "0a0b"}`` is binary data. Key paths and in
 compare case-insensitively, as Windows does; a device property the document lacks is one the
 device does not have (:class:`MissingKeyError`). A class, key or firmware entry the document lacks answers
 :class:`SourceError`, exactly like a class that does not exist on a real machine. A ``where``
-filter is not evaluated: a recording holds the rows the query returned.
+filter is not evaluated: a recording holds the rows the query returned. A method call answers the
+``cim_methods`` entries recorded with the same ``where`` and ``arguments`` (a missing field means
+none), so one recording can hold a different answer per volume and per argument; a method the
+document lacks answers :class:`SourceError`.
 
 The ``cpuid`` block uses the keys and register form of a reading's ``cpuid.raw``, so a reading
 replays as a recording. A leaf it lacks answers four zero registers, as a CPU answers a leaf it
@@ -55,6 +61,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, cast
 
+from ..domain.cim_method import CimMethodAnswer
 from ..domain.cpuid import CpuidQuery, CpuidRegs
 from ..domain.machine_errors import MissingKeyError, NotAReadingError, SourceError
 from ..domain.numa import NumaNode
@@ -66,6 +73,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from ..application.machine_ports import NetlinkDump, RegistryData
+    from ..domain.cim_method import CimArgument
     from ..domain.devprops import DeviceProperty
     from ..domain.json_types import JsonObject, JsonValue
 
@@ -116,12 +124,25 @@ def _recorded_cpuid(recorded: JsonObject, leaf: int, subleaf: int) -> CpuidRegs:
     return CpuidRegs(*(_register(regs, r) for r in ("eax", "ebx", "ecx", "edx")))
 
 
+def _method_answer(entry: JsonObject, where: str) -> CimMethodAnswer:
+    path, value = entry.get("instance_path"), entry.get("return_value")
+    if not isinstance(path, str) or not (value is None or isinstance(value, int)):
+        raise SourceError(f"{where}: {entry} is not a recorded method answer")
+    return CimMethodAnswer(instance_path=path, return_value=value, out=_obj(entry.get("out", {}), where))
+
+
+def _same_call(entry: JsonObject, where: str | None, arguments: Mapping[str, CimArgument] | None) -> bool:
+    recorded = entry.get("arguments") or {}
+    return entry.get("where") == where and recorded == dict(arguments or {})
+
+
 class FixtureSources:
     """Both sources of one recorded machine."""
 
     def __init__(self, document: JsonObject) -> None:
         """Hold ``document`` (see the module docstring for its shape)."""
         self._cim = _obj(document.get("cim", {}), "cim")
+        self._methods = _obj(document.get("cim_methods", {}), "cim_methods")
         self._firmware = _obj(document.get("firmware", {}), "firmware")
         self._cpuid = _obj(document.get("cpuid", {}), "cpuid")
         self._system = _obj(document.get("system", {}), "system")
@@ -139,6 +160,23 @@ class FixtureSources:
         if not isinstance(rows, list):
             raise SourceError(f"{namespace}:{class_name}: not recorded")
         return [r for r in rows if isinstance(r, dict)]
+
+    def cim_method(
+        self,
+        class_name: str,
+        method_name: str,
+        *,
+        namespace: str = "root/cimv2",
+        where: str | None = None,
+        arguments: Mapping[str, CimArgument] | None = None,
+    ) -> list[CimMethodAnswer]:
+        """Return the recorded answers of ``namespace:class_name.method_name`` for this call."""
+        key = f"{namespace}:{class_name}.{method_name}"
+        entries = self._methods.get(key)
+        if not isinstance(entries, list):
+            raise SourceError(f"{key}: not recorded")
+        recorded = [e for e in entries if isinstance(e, dict)]
+        return [_method_answer(e, key) for e in recorded if _same_call(e, where, arguments)]
 
     def _hex(self, name: str) -> bytes:
         text = self._firmware.get(name)

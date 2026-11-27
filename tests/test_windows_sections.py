@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 from click.testing import CliRunner
 from machine_builder import PVSCSI_SERIAL, machine_document
-from windows_builder import PLANTED_OWNER_AUTH, PVSCSI_LOCATION_PATHS, PVSCSI_PARENT
+from windows_builder import PLANTED_OWNER_AUTH, PLANTED_PROTECTOR_IDS, PVSCSI_LOCATION_PATHS, PVSCSI_PARENT
 
 from fingerprint_machine.adapters.cli.root import cli
 from fingerprint_machine.adapters.fixture import FixtureSources
@@ -218,6 +218,48 @@ def test_a_cached_tpm_authorization_never_reaches_the_reading() -> None:
     assert service["OwnerAuthFull"] == "<withheld: a TPM authorization value>"
     assert service["OSManagedAuthLevel"] == 4
     assert PLANTED_OWNER_AUTH not in json.dumps(reading)
+
+
+@pytest.mark.os_agnostic
+def test_a_bitlocker_volume_carries_the_values_only_its_methods_answer() -> None:
+    (volume,) = _list(_section("security")["bitlocker"])
+    methods = _obj(_obj(volume)["methods"])
+    assert _obj(methods["GetConversionStatus"]) == {
+        "return_value": 0,
+        "ConversionStatus": 1,
+        "EncryptionPercentage": 100,
+    }
+    assert _obj(methods["GetLockStatus"])["LockStatus"] == 0
+    assert _obj(methods["GetEncryptionMethod"])["EncryptionMethod"] == 6
+
+
+@pytest.mark.os_agnostic
+def test_key_protectors_are_recorded_by_type_and_their_ids_never_reach_the_reading() -> None:
+    reading = _reading()
+    (volume,) = _list(_obj(reading["security"])["bitlocker"])
+    assert _obj(_obj(volume)["methods"])["key_protector_types"] == [
+        {"type": 1, "name": "trusted platform module"},
+        {"type": 3, "name": "numerical password"},
+    ]
+    assert not [pid for pid in PLANTED_PROTECTOR_IDS if pid in json.dumps(reading)]
+
+
+@pytest.mark.os_agnostic
+def test_a_refused_method_costs_only_its_own_entry() -> None:
+    (volume,) = _list(_section("security")["bitlocker"])
+    methods = _obj(_obj(volume)["methods"])
+    assert str(_obj(methods["GetVersion"])["error"]).startswith("SourceError:")
+    assert _obj(methods["GetProtectionStatus"])["ProtectionStatus"] == 1
+
+
+@pytest.mark.os_agnostic
+def test_the_tpm_carries_its_readiness_and_lockout_state() -> None:
+    (tpm,) = _list(_section("security")["tpm"])
+    methods = _obj(_obj(tpm)["methods"])
+    assert _obj(tpm)["ManufacturerIdTxt"] == "VMW"
+    assert (_obj(methods["IsReady"])["IsReady"], _obj(methods["IsOwned"])["IsOwned"]) == (True, True)
+    assert _obj(methods["GetDictionaryAttackParameters"])["MaxTries"] == 31
+    assert _obj(methods["GetCapLockoutInfo"])["LockoutCounter"] == 0
 
 
 @pytest.mark.os_agnostic

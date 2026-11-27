@@ -26,6 +26,10 @@ if TYPE_CHECKING:
     from fingerprint_machine.domain.json_types import JsonObject, JsonValue
 
 
+# StdRegProv names a registry hive by its predefined handle value.
+_HKEY_LOCAL_MACHINE = 0x80000002
+
+
 def _obj(value: JsonValue) -> JsonObject:
     assert isinstance(value, dict), value
     assert set(value) != {"error"}, value
@@ -82,6 +86,27 @@ def test_collect_reads_the_windows_security_posture(reading: JsonObject) -> None
     assert _obj(security["uac"])
     assert _list(security["firewall"])
     assert _list(security["credential_providers"])
+    # A runner may have no TPM or no BitLocker; where the class answers, each row has its methods.
+    for key in ("tpm", "bitlocker"):
+        rows = security[key]
+        if isinstance(rows, list):
+            assert all(isinstance(_obj(row)["methods"], dict) for row in rows), rows
+
+
+@pytest.mark.os_windows
+def test_the_platform_source_runs_a_read_only_cim_method() -> None:
+    (answer,) = PwshpyPlatformSource().cim_method(
+        "StdRegProv",
+        "GetStringValue",
+        namespace="root/default",
+        arguments={
+            "hDefKey": _HKEY_LOCAL_MACHINE,
+            "sSubKeyName": r"SOFTWARE\Microsoft\Windows NT\CurrentVersion",
+            "sValueName": "CurrentBuild",
+        },
+    )
+    assert answer.return_value == 0
+    assert str(answer.out["sValue"]).isdigit()
 
 
 @pytest.mark.os_windows
