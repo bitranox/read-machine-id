@@ -90,17 +90,17 @@ def test_when_config_is_invoked_with_json_format_and_section_it_shows_section(
     """Verify JSON format displays specific section content."""
     factory = config_cli_context(
         {
-            "email": {
-                "smtp_hosts": ["smtp.test.com:587"],
+            "service": {
+                "hosts": ["host.test:587"],
                 "from_address": "test@example.com",
             }
         }
     )
 
-    result: Result = cli_runner.invoke(cli_mod.cli, ["config", "--format", "json", "--section", "email"], obj=factory)
+    result: Result = cli_runner.invoke(cli_mod.cli, ["config", "--format", "json", "--section", "service"], obj=factory)
 
     assert result.exit_code == 0
-    assert json.loads(result.output)["email"]["smtp_hosts"] == ["smtp.test.com:587"]
+    assert json.loads(result.output)["service"]["hosts"] == ["host.test:587"]
 
 
 @pytest.mark.os_agnostic
@@ -111,8 +111,8 @@ def test_when_config_is_invoked_with_json_format_and_nonexistent_section_it_fail
     """Verify JSON format with nonexistent section returns error."""
     factory = config_cli_context(
         {
-            "email": {
-                "smtp_hosts": ["smtp.test.com:587"],
+            "service": {
+                "hosts": ["host.test:587"],
             }
         }
     )
@@ -133,8 +133,8 @@ def test_when_config_is_invoked_with_section_showing_complex_values(
     """Verify human format with section containing lists and dicts."""
     factory = config_cli_context(
         {
-            "email": {
-                "smtp_hosts": ["smtp1.test.com:587", "smtp2.test.com:587"],
+            "service": {
+                "hosts": ["host1.test:587", "host2.test:587"],
                 "from_address": "test@example.com",
                 "metadata": {"key1": "value1", "key2": "value2"},
                 "timeout": 60.0,
@@ -142,12 +142,12 @@ def test_when_config_is_invoked_with_section_showing_complex_values(
         }
     )
 
-    result: Result = cli_runner.invoke(cli_mod.cli, ["config", "--section", "email"], obj=factory)
+    result: Result = cli_runner.invoke(cli_mod.cli, ["config", "--section", "service"], obj=factory)
 
     assert result.exit_code == 0
-    assert "[email]" in result.output
-    smtp_hosts_line = next(line.strip() for line in result.output.splitlines() if line.strip().startswith("smtp_hosts"))
-    assert smtp_hosts_line == 'smtp_hosts = ["smtp1.test.com:587", "smtp2.test.com:587"]'
+    assert "[service]" in result.output
+    hosts_line = next(line.strip() for line in result.output.splitlines() if line.strip().startswith("hosts"))
+    assert hosts_line == 'hosts = ["host1.test:587", "host2.test:587"]'
     assert "metadata" in result.output
     assert '"test@example.com"' in result.output
     assert "60.0" in result.output
@@ -161,8 +161,8 @@ def test_when_config_shows_all_sections_with_complex_values(
     """Verify human format showing all sections with lists and dicts."""
     factory = config_cli_context(
         {
-            "email": {
-                "smtp_hosts": ["smtp.test.com:587"],
+            "service": {
+                "hosts": ["host.test:587"],
                 "tags": {"environment": "test", "version": "1.0"},
             },
             "logging": {
@@ -175,9 +175,9 @@ def test_when_config_shows_all_sections_with_complex_values(
     result: Result = cli_runner.invoke(cli_mod.cli, ["config"], obj=factory)
 
     assert result.exit_code == 0
-    assert "[email]" in result.output
+    assert "[service]" in result.output
     assert "[logging]" in result.output
-    assert "smtp_hosts" in result.output
+    assert "hosts" in result.output
     assert "handlers" in result.output
     assert "tags" in result.output
 
@@ -435,11 +435,11 @@ def test_when_config_displays_human_format_it_redacts_password(
     cli_runner: CliRunner,
     config_cli_context: Callable[[dict[str, Any]], Callable[[], Any]],
 ) -> None:
-    """Human-readable output must redact sensitive keys like smtp_password."""
+    """Human-readable output must redact sensitive keys like password."""
     factory = config_cli_context(
         {
-            "email": {
-                "smtp_password": "super_secret_123",
+            "service": {
+                "password": "super_secret_123",
                 "from_address": "test@example.com",
             }
         }
@@ -459,11 +459,11 @@ def test_when_config_displays_json_format_it_redacts_password(
     cli_runner: CliRunner,
     config_cli_context: Callable[[dict[str, Any]], Callable[[], Any]],
 ) -> None:
-    """JSON output must redact sensitive keys like smtp_password."""
+    """JSON output must redact sensitive keys like password."""
     factory = config_cli_context(
         {
-            "email": {
-                "smtp_password": "super_secret_123",
+            "service": {
+                "password": "super_secret_123",
                 "from_address": "test@example.com",
             }
         }
@@ -534,7 +534,7 @@ def test_when_config_displays_password_in_list_of_dicts_it_redacts(
         {
             "connections": {
                 "servers": [
-                    {"host": "smtp.example.com", "password": "secret123"},
+                    {"host": "primary.example.com", "password": "secret123"},
                     {"host": "backup.example.com", "password": "secret456"},
                 ],
                 "name": "production",
@@ -548,7 +548,7 @@ def test_when_config_displays_password_in_list_of_dicts_it_redacts(
     assert "secret123" not in result.stdout
     assert "secret456" not in result.stdout
     servers = json.loads(result.stdout)["connections"]["servers"]
-    assert [server["host"] for server in servers] == ["smtp.example.com", "backup.example.com"]
+    assert [server["host"] for server in servers] == ["primary.example.com", "backup.example.com"]
     assert [server["password"] for server in servers] == ["***REDACTED***", "***REDACTED***"]
 
 
@@ -568,9 +568,7 @@ def test_when_config_generate_examples_is_invoked_it_creates_files(
     ) -> list[Path]:
         return [created_file]
 
-    monkeypatch.setattr(
-        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
-    )
+    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -597,9 +595,7 @@ def test_when_config_generate_examples_has_no_files_it_informs_user(
     ) -> list[Path]:
         return []
 
-    monkeypatch.setattr(
-        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
-    )
+    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -642,9 +638,7 @@ def test_when_config_generate_examples_with_force_it_passes_force_flag(
         captured_force.append(force)
         return [created_file]
 
-    monkeypatch.setattr(
-        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
-    )
+    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -674,9 +668,7 @@ def test_when_config_generate_examples_without_force_it_defaults_to_false(
         captured_force.append(force)
         return [created_file]
 
-    monkeypatch.setattr(
-        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
-    )
+    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -702,9 +694,7 @@ def test_when_config_generate_examples_encounters_error_it_exits_with_general_er
     ) -> list[Path]:
         raise OSError("Disk full")
 
-    monkeypatch.setattr(
-        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
-    )
+    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -736,9 +726,7 @@ def test_when_config_generate_examples_it_passes_correct_metadata(
         captured_params.append({"slug": slug, "vendor": vendor, "app": app, "destination": str(destination)})
         return [created_file]
 
-    monkeypatch.setattr(
-        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
-    )
+    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -763,7 +751,7 @@ def test_when_config_generate_examples_creates_multiple_files_it_lists_all(
 ) -> None:
     """Verify config-generate-examples lists all created files."""
     file1 = tmp_path / "config.toml"
-    file2 = tmp_path / "config.d" / "50-email.toml"
+    file2 = tmp_path / "config.d" / "50-service.toml"
     file1.touch()
     file2.parent.mkdir(parents=True)
     file2.touch()
@@ -773,9 +761,7 @@ def test_when_config_generate_examples_creates_multiple_files_it_lists_all(
     ) -> list[Path]:
         return [file1, file2]
 
-    monkeypatch.setattr(
-        "read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples
-    )
+    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -878,7 +864,7 @@ def unreadable_user_config(
     sys.platform == "win32" or os.geteuid() == 0,
     reason="chmod 000 binds only a non-root POSIX user: root reads any file, Windows has no POSIX modes",
 )
-@pytest.mark.parametrize("command", [["config"], ["send-notification", "--subject", "s", "--message", "m"]])
+@pytest.mark.parametrize("command", [["config"]])
 def test_when_the_user_config_file_is_unreadable_a_config_reading_command_exits_78_and_names_it(
     cli_runner: CliRunner,
     production_factory: Callable[[], Any],

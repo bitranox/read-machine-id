@@ -45,7 +45,7 @@ def _doctest_for(command: click.Command) -> doctest.DocTest:
 def test_the_root_group_and_its_commands_are_all_collected() -> None:
     # A collector that silently found nothing would pass every parametrized case below.
     assert "cli" in COMMANDS
-    assert {"hello", "info", "fail", "config", "send-email"} <= COMMANDS.keys()
+    assert {"info", "fail", "config", "config-deploy", "logdemo"} <= COMMANDS.keys()
 
 
 @pytest.mark.os_agnostic

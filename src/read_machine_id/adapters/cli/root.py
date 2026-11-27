@@ -86,9 +86,9 @@ def cli(
 
         >>> from click.testing import CliRunner
         >>> from read_machine_id.composition import build_testing
-        >>> result = CliRunner().invoke(cli, ["hello"], obj=build_testing)
-        >>> result.exit_code, result.output.strip()
-        (0, 'Hello World')
+        >>> result = CliRunner().invoke(cli, ["info"], obj=build_testing)
+        >>> result.exit_code, result.output.splitlines()[0]
+        (0, 'Info for read-machine-id:')
     """
     # First, before anything that can raise: main() reads this flag when it reports an exception,
     # so a crash in the services factory, the config loader or logging setup honours --traceback.
@@ -126,23 +126,17 @@ def _register_commands() -> None:
         cli_config_deploy,
         cli_config_generate_examples,
         cli_fail,
-        cli_hello,
         cli_info,
         cli_logdemo,
-        cli_send_email,
-        cli_send_notification,
     )
 
     for cmd in (
         cli_info,
-        cli_hello,
         cli_fail,
         cli_config,
         cli_config_deploy,
         cli_config_generate_examples,
         cli_logdemo,
-        cli_send_email,
-        cli_send_notification,
     ):
         cli.add_command(cmd)
 

@@ -48,7 +48,7 @@ import sys
 from read_machine_id.adapters.cli.main import main
 from read_machine_id.composition import build_production
 
-argv = ["--set", 'email.smtp_hosts=["a.test:25"]', "config", "--format", "json", "--section", "email"]
+argv = ["--set", 'my_service.hosts=["a.test:25"]', "config", "--format", "json", "--section", "my_service"]
 code = main(argv, services_factory=build_production)
 verdict = {
     "exit": code,
@@ -68,5 +68,5 @@ with open(os.environ["GIL_PROBE_VERDICT"], "w", encoding="utf-8") as handle:
     )
 
     assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout)["email"]["smtp_hosts"] == ["a.test:25"]
+    assert json.loads(result.stdout)["my_service"]["hosts"] == ["a.test:25"]
     assert json.loads(verdict_file.read_text(encoding="utf-8")) == {"exit": 0, "gil": False, "loaded": []}
