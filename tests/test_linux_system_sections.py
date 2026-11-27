@@ -204,6 +204,17 @@ def test_security_on_the_vmware_guest_reads_secure_boot_tpm_ek_and_luks(tmp_path
 
 
 @pytest.mark.os_agnostic
+def test_uefi_without_visible_efivars_records_why_instead_of_reporting_secure_boot_off(tmp_path: Path) -> None:
+    root = write_system_tree(write_linux_tree(tmp_path), Guest.VMWARE)
+    for var in (root / "sys/firmware/efi/efivars").iterdir():
+        var.unlink()
+    source = FixtureLinuxSource(root, system_answers(Guest.VMWARE))
+    security = _section("security", lambda: build_testing(sources=LinuxSources(system=source, cpuid=source)))
+    for item in ("secure_boot", "mok"):
+        assert "efivarfs is not mounted" in str(_obj(security[item])["error"])
+
+
+@pytest.mark.os_agnostic
 def test_security_reads_luks_and_lvm_from_device_mapper_and_never_key_material(tmp_path: Path) -> None:
     out = _run(["--section", "security"], _factory(tmp_path, Guest.KVM))
     assert "SYNTHETICDIGEST" not in out and "keyslots" not in out

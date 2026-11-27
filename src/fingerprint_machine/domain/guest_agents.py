@@ -43,7 +43,17 @@ class GuestAgent:
         """
         if comm in {p[:COMM_LENGTH] for p in self.processes}:
             return True
-        return any(arg.rsplit("/", 1)[-1] in self.scripts for arg in argv[:2])
+        return any(arg.rsplit("/", 1)[-1] in self.scripts for arg in _program_and_script(argv))
+
+
+def _program_and_script(argv: Sequence[str]) -> list[str]:
+    """The program and, for an interpreter, the script it runs: its first non-option argument.
+
+    Interpreter options come first (``python3 -u /usr/sbin/waagent -daemon``), so the script is
+    not always ``argv[1]``.
+    """
+    script = next((arg for arg in argv[1:] if not arg.startswith("-")), None)
+    return list(argv[:1]) if script is None else [argv[0], script]
 
 
 def _agent(

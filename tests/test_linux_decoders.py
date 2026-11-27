@@ -7,9 +7,13 @@ import struct
 
 import pytest
 
+from fingerprint_machine.domain.devmapper import DmKind, classify_dm_uuid
 from fingerprint_machine.domain.efivars import decode_efivar_flag
+from fingerprint_machine.domain.guest_agents import agents_running
 from fingerprint_machine.domain.luks import decode_luks_header, luks_header_size
 from fingerprint_machine.domain.procfs import (
+    parse_apparmor_modes,
+    parse_choice,
     parse_cpuinfo,
     parse_meminfo,
     parse_module_names,
@@ -258,3 +262,51 @@ def test_a_device_without_the_luks_magic_is_refused() -> None:
         luks_header_size(bytes(4096))
     with pytest.raises(ValueError, match="LUKS"):
         decode_luks_header(b"LUKS\xba\xbe" + struct.pack(">H", 9) + bytes(600))
+
+
+# --------------------------------------------------------------------------------------------
+# sysfs choice files, AppArmor profiles, device-mapper UUIDs, guest agents
+# --------------------------------------------------------------------------------------------
+
+
+@pytest.mark.os_agnostic
+def test_a_choice_file_gives_the_bracketed_choice_and_every_choice() -> None:
+    assert parse_choice("always [madvise] never\n") == {
+        "selected": "madvise",
+        "choices": ["always", "madvise", "never"],
+    }
+    assert parse_choice("none integrity\n")["selected"] is None
+
+
+@pytest.mark.os_agnostic
+def test_apparmor_profiles_are_counted_per_mode_and_names_are_dropped() -> None:
+    text = "/usr/bin/a (enforce)\nsnap.x (complain)\nweird line\n/usr/bin/(b) (enforce)\n"
+    counts = parse_apparmor_modes(text)
+    assert counts == {"complain": 1, "enforce": 2}
+    assert "/usr/bin/a" not in str(counts)
+
+
+@pytest.mark.os_agnostic
+def test_device_mapper_uuids_name_crypt_lvm_multipath_and_other() -> None:
+    crypt = classify_dm_uuid("CRYPT-LUKS1-" + "0a" * 16 + "-home")
+    assert (crypt.kind, crypt.subtype, crypt.volume_uuid) == (
+        DmKind.CRYPT,
+        "LUKS1",
+        "0a0a0a0a-0a0a-0a0a-0a0a-0a0a0a0a0a0a",
+    )
+    plain = classify_dm_uuid("CRYPT-PLAIN-swap")
+    assert (plain.subtype, plain.volume_uuid) == ("PLAIN", "swap")
+    lvm = classify_dm_uuid("LVM-" + "G" * 32 + "V" * 32)
+    assert (lvm.kind, lvm.group_uuid, lvm.volume_uuid) == (DmKind.LVM, "G" * 32, "V" * 32)
+    assert classify_dm_uuid("mpath-3600a0b8").as_json()["volume_uuid"] == "3600a0b8"
+    assert classify_dm_uuid("part1-something").kind is DmKind.OTHER
+
+
+@pytest.mark.os_agnostic
+def test_a_guest_agent_is_known_by_its_cut_process_name_or_its_script() -> None:
+    assert agents_running("vmtoolsd", []) == ["open-vm-tools"]
+    assert agents_running("VGAuthService"[:15], []) == ["open-vm-tools"]
+    assert agents_running("python3", ["/usr/bin/python3", "-u", "/usr/sbin/waagent", "-daemon"]) == ["waagent"]
+    assert agents_running("python3", ["/usr/bin/python3", "/opt/app.py", "/usr/sbin/waagent"]) == []
+    assert agents_running("python3", ["/usr/bin/python3", "/usr/sbin/waagent", "-daemon"]) == ["waagent"]
+    assert agents_running("bash", ["/bin/bash"]) == []
