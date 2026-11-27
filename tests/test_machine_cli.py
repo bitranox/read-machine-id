@@ -23,9 +23,13 @@ if TYPE_CHECKING:
     from read_machine_id.domain.json_types import JsonObject, JsonValue
 
 
-def _machine(**kwargs: str) -> Callable[[], AppServices]:
-    recorded = FixtureSources(machine_document(**kwargs))
+def _replay(document: JsonObject) -> Callable[[], AppServices]:
+    recorded = FixtureSources(document)
     return lambda: build_testing(sources=Sources(platform=recorded, registry=recorded))
+
+
+def _machine(**kwargs: str) -> Callable[[], AppServices]:
+    return _replay(machine_document(**kwargs))
 
 
 def _run(args: list[str], factory: Callable[[], AppServices]) -> tuple[int, str]:
@@ -129,6 +133,28 @@ def test_an_unrecorded_question_is_skipped_not_fatal() -> None:
     paths = [_obj(s)["path"] for s in skipped]
     assert "services.all" in paths  # Win32_Service is not in the recording
     assert "smbios" not in paths
+
+
+@pytest.mark.os_agnostic
+def test_an_absent_optional_key_is_an_empty_answer_not_a_skip() -> None:
+    # The recording has no CloudDomainJoin key: the machine is simply not joined.
+    envelope = _collect(_machine())
+    reading = _obj(envelope["data"])
+    assert _obj(reading["windows"])["cloud_join"] == {}
+    skipped = envelope["skipped"]
+    assert isinstance(skipped, list)
+    assert "windows.cloud_join" not in [_obj(s)["path"] for s in skipped]
+
+
+@pytest.mark.os_agnostic
+def test_an_absent_key_a_machine_always_has_is_still_skipped() -> None:
+    document = machine_document()
+    registry = document["registry"]
+    assert isinstance(registry, dict)
+    del registry[r"HKLM\SOFTWARE\Microsoft\Cryptography"]
+    skipped = _collect(_replay(document))["skipped"]
+    assert isinstance(skipped, list)
+    assert "windows.machine_guid" in [_obj(s)["path"] for s in skipped]
 
 
 @pytest.mark.os_agnostic

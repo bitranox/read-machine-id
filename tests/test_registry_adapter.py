@@ -17,7 +17,7 @@ from read_machine_id.adapters.fixture import FixtureSources
 from read_machine_id.adapters.windows.registry import LibRegistrySource
 from read_machine_id.application.collect import Section, read_section
 from read_machine_id.application.machine_ports import Sources
-from read_machine_id.domain.machine_errors import SourceError
+from read_machine_id.domain.machine_errors import MissingKeyError
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -46,9 +46,10 @@ def test_values_and_subkeys_come_back_typed_and_sorted(scratch_key: str) -> None
 
 
 @pytest.mark.os_posix
-def test_a_missing_key_is_a_source_error() -> None:
-    with pytest.raises(SourceError, match="read-machine-id-missing"):
-        LibRegistrySource().values(r"HKCU\Software\read-machine-id-missing")
+@pytest.mark.parametrize("method", ["values", "subkeys"])
+def test_a_missing_key_is_reported_as_missing(method: str) -> None:
+    with pytest.raises(MissingKeyError, match="read-machine-id-missing"):
+        getattr(LibRegistrySource(), method)(r"HKCU\Software\read-machine-id-missing")
 
 
 @pytest.mark.os_posix

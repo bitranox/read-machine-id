@@ -2,6 +2,7 @@
 
 Contents:
     * :class:`SourceError` - a source could not answer one question; the reading goes on.
+    * :class:`MissingKeyError` - the registry key asked for does not exist.
     * :class:`UnsupportedPlatformError` - this machine cannot be read (not Windows).
     * :class:`NotAReadingError` - a file given as a reading is not one.
 """
@@ -15,6 +16,19 @@ class SourceError(Exception):
     Example:
         >>> str(SourceError("Win32_Tpm: access denied"))
         'Win32_Tpm: access denied'
+    """
+
+
+class MissingKeyError(SourceError):
+    """The registry key asked for does not exist.
+
+    For an optional key (cloud join, cached EK certificates) that is the answer itself: the
+    machine is not joined, nothing is cached. Readers of such keys catch this one and report an
+    empty result; every other reader lets it through as an unanswered question.
+
+    Example:
+        >>> isinstance(MissingKeyError(r"HKLM\\SOFTWARE\\X: key not found"), SourceError)
+        True
     """
 
 
@@ -36,4 +50,4 @@ class NotAReadingError(ValueError):
     """
 
 
-__all__ = ["NotAReadingError", "SourceError", "UnsupportedPlatformError"]
+__all__ = ["MissingKeyError", "NotAReadingError", "SourceError", "UnsupportedPlatformError"]

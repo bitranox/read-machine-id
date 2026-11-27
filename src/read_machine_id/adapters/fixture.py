@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, cast
 
-from ..domain.machine_errors import NotAReadingError, SourceError
+from ..domain.machine_errors import MissingKeyError, NotAReadingError, SourceError
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -103,7 +103,7 @@ class FixtureSources:
     def _key(self, key: str) -> JsonObject:
         entry = self._keys.get(key.casefold())
         if entry is None:
-            raise SourceError(f"{key}: key not found")
+            raise MissingKeyError(f"{key}: key not found")
         return entry
 
     def values(self, key: str) -> dict[str, RegistryData]:

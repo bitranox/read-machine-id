@@ -12,9 +12,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from lib_registry import Registry, RegistryError
+from lib_registry import Registry, RegistryError, RegistryKeyNotFoundError
 
-from ...domain.machine_errors import SourceError
+from ...domain.machine_errors import MissingKeyError, SourceError
 
 if TYPE_CHECKING:
     from ...application.machine_ports import RegistryData
@@ -31,10 +31,13 @@ class LibRegistrySource:
         """Return every value of ``key`` by name.
 
         Raises:
-            SourceError: the key does not exist or cannot be opened.
+            MissingKeyError: the key does not exist.
+            SourceError: the key cannot be opened.
         """
         try:
             return {v.name: v.data for v in self._registry.values(key)}
+        except RegistryKeyNotFoundError as exc:
+            raise MissingKeyError(f"{key}: {exc}") from exc
         except (RegistryError, OSError) as exc:
             raise SourceError(f"{key}: {exc}") from exc
 
@@ -42,10 +45,13 @@ class LibRegistrySource:
         """Return the subkey names of ``key``, sorted case-insensitively.
 
         Raises:
-            SourceError: the key does not exist or cannot be opened.
+            MissingKeyError: the key does not exist.
+            SourceError: the key cannot be opened.
         """
         try:
             return sorted(self._registry.subkeys(key), key=str.casefold)
+        except RegistryKeyNotFoundError as exc:
+            raise MissingKeyError(f"{key}: {exc}") from exc
         except (RegistryError, OSError) as exc:
             raise SourceError(f"{key}: {exc}") from exc
 

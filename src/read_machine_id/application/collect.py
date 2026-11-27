@@ -29,7 +29,7 @@ from ..domain.identity import (
     msdm_product_key,
     withhold_registry_values,
 )
-from ..domain.machine_errors import SourceError
+from ..domain.machine_errors import MissingKeyError, SourceError
 from ..domain.network import BY_INDEX, BY_NAME, join_adapters
 from ..domain.smbios import decode_smbios
 from ..domain.summary import summarize
@@ -275,10 +275,19 @@ def _local_sids(src: Sources) -> JsonValue:
     return machine_sid(a.get("SID") for a in accounts)
 
 
+def _optional_subkeys(src: Sources, key: str) -> list[str]:
+    """Subkeys of a key that only exists on some machines: none when it is absent."""
+    try:
+        return src.registry.subkeys(key)
+    except MissingKeyError:
+        return []
+
+
 def _cloud_join(src: Sources) -> JsonValue:
+    # The JoinInfo key exists only on a machine joined to Entra ID: absent means not joined.
     return {
         thumb: _guarded(lambda t=thumb: _values(src, rf"{_CLOUD_JOIN}\{t}"))
-        for thumb in src.registry.subkeys(_CLOUD_JOIN)
+        for thumb in _optional_subkeys(src, _CLOUD_JOIN)
     }
 
 
@@ -288,7 +297,8 @@ def _current_version(src: Sources) -> JsonValue:
 
 def _ek_certificates(src: Sources) -> JsonValue:
     out: list[JsonValue] = []
-    for thumb in src.registry.subkeys(_EK_STORE):
+    # The store exists only once Windows has cached an EK certificate (a TPM that has one).
+    for thumb in _optional_subkeys(src, _EK_STORE):
         blob = src.registry.values(rf"{_EK_STORE}\{thumb}").get("Blob")
         der = der_from_store_blob(blob) if isinstance(blob, bytes) else None
         detail = describe_certificate(der) if der is not None else {"error": "no certificate in the store blob"}
