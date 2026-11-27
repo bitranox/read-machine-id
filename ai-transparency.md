@@ -9,18 +9,21 @@ you can weigh the work on its merits. The reasoning behind working this way is i
 
 ## The human's work
 
-- The problem is theirs: moving Windows machines between hardware and hypervisors changes
-  identity values (system UUID, serials, MAC addresses, NIC slot numbers, disk ids, the Windows
-  device id) that licensing, activation and driver bindings depend on, and there was no single
-  tool that reads them all and says what changed.
-- The scope is theirs: everything a machine says about itself, including SMBIOS, adapter
-  numbers, serials, network card settings, the Windows ids, product id and TPM state; a standalone
+- The problem is theirs: moving Windows and Linux machines between hardware and hypervisors
+  changes identity values (system UUID, serials, MAC addresses, NIC slot numbers, disk ids, the
+  Windows device id) that licensing, activation and driver bindings depend on, and there was no
+  single tool that reads them all, says what changed, and shows which values to adjust so a VM on
+  one hypervisor looks like it did on another.
+- The scope is theirs: everything a machine says about itself on Windows and on Linux, including
+  SMBIOS, CPUID, PCI topology and interrupts, adapter numbers, serials, network card settings,
+  storage controllers, the Windows ids, product id, BitLocker and TPM state; a standalone
   tool that prints JSON and can save it to a file; a public repository, not tied to any one
   hypervisor.
 - So are the structural choices: building on the bitranox CLI template and its layering, reading
   WMI through `pwshpy` and the registry through `lib_registry` (which falls back to `fake_winreg`
   off Windows, so the registry code runs for real in the tests), and comparing readings field by
-  field with changing counters left out of the score.
+  field with changing counters left out of the score. On Linux the tool reads sysfs, procfs and
+  kernel ioctls directly and never parses another tool's text output.
 - The human reviewed and corrected the work at each step; what ships is what they signed off on.
 - Every commit went out under the human's name and authority, with no AI co-author line. The
   human is responsible for what is published.
@@ -29,8 +32,8 @@ you can weigh the work on its merits. The reasoning behind working this way is i
 
 As a tool, under the human's direction, it did the mechanical parts: typing the SMBIOS decoders,
 the readers, the CLI commands, the tests and the docs to the human's design; building synthetic
-test machines so no real serial or key appears in the repository; running the tool on a real
-Windows machine and fixing what that run showed; and checking the prose against the code so the
+test machines so no real serial or key appears in the repository; running the tool on real
+Windows and Linux machines and fixing what those runs showed; and checking the prose against the code so the
 docs describe what the code does now. None of the decisions, and none of the accountability, were
 the AI's.
 
@@ -39,7 +42,8 @@ the AI's.
 The gate is `make test`, and CI runs the same checks: Ruff (lint and format), Pyright in strict
 mode, the import-linter layer contracts, Bandit, pip-audit, and Pytest with coverage, including
 the doctests in the source modules. The tests replay a recorded synthetic machine through the real
-CLI, and one test reads the CI's own Windows runner for real. A planted product key proves that no
+CLI, and tests read the CI's own Windows and Linux
+runners for real. A planted product key proves that no
 full key reaches the output. CI runs on Linux and Windows under
 Python 3.15. The badges at the top of the README report the live state.
 

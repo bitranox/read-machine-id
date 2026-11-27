@@ -38,8 +38,9 @@ uvx fingerprint-machine@latest --help
 ## Persistent install as CLI tool
 
 ```bash
-# install the CLI tool (isolated environment, added to PATH)
-uv tool install fingerprint-machine
+# install the CLI tool (isolated environment, added to PATH; precompiled, so a run under sudo
+# writes no root-owned cache files into it)
+uv tool install --compile-bytecode fingerprint-machine
 
 # upgrade to latest
 uv tool upgrade fingerprint-machine
@@ -51,6 +52,18 @@ uv tool upgrade fingerprint-machine
 uv venv && source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
 uv pip install fingerprint-machine
 ```
+
+## Running it as root on Linux
+
+Most Linux values are readable by any user; the raw SMBIOS table, the ACPI tables, full PCI config
+space, permanent MAC addresses and the TPM's EK certificate need root. sudo resets the PATH, so
+hand it the installed command's full path:
+
+```bash
+sudo "$(command -v fingerprint-machine)" collect --out machine.json
+```
+
+On Windows, run it from an elevated prompt instead.
 
 ## Verify installation
 
@@ -107,7 +120,7 @@ pipx install "git+https://github.com/bitranox/fingerprint-machine"
 pipx install .
 pipx upgrade fingerprint-machine
 # install from Git tag
-pipx install "git+https://github.com/bitranox/fingerprint-machine@v1.1.0"
+pipx install "git+https://github.com/bitranox/fingerprint-machine@v0.2.0"
 ```
 
 ## From Build Artifacts
