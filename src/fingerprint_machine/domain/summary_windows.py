@@ -6,7 +6,9 @@ section, a table that failed to read).
 
 Like the Linux summary, it lists hardware only: adapters that report ``HardwareInterface`` (a
 tunnel or a VPN adapter does not) and storage controllers on the PCI bus (not the Storage Spaces
-controller or another software controller under ``ROOT\``). The full sections still hold them all.
+controller or another software controller under ``ROOT\``). Windows files an AHCI controller
+under its IDE controllers, so those are read too, as Linux lists AHCI beside SCSI and NVMe. NICs and
+controllers are in PCI address order on both OSes. The full sections still hold everything.
 
 Contents:
     * :func:`summarize_windows` - the summary of a Windows reading's sections.
@@ -41,6 +43,7 @@ from .summary_values import (
     node,
     obj,
     pci_address,
+    pci_order,
     rows,
     text,
 )
@@ -151,7 +154,7 @@ def _disks(body: JsonObject) -> tuple[DiskSummary, ...]:
         msft = storage.get(integer(d.get("Index")), {})
         out.append(
             DiskSummary(
-                model=text(d.get("Model")),
+                model=text(msft.get("Model")) or text(d.get("Model")),
                 serial=text(d.get("SerialNumber")),
                 size=integer(d.get("Size")),
                 mbr_signature=integer(d.get("Signature")),
@@ -210,12 +213,15 @@ def summarize_windows(body: JsonObject) -> Summary:
         ('Xeon', 4, None, (), None)
     """
     pci = _pci_by_instance(body)
+    nics = (_nic(r) for r in rows(body, "network", "adapters") if _is_hardware_adapter(r))
+    storage = rows(body, "hardware", "scsi_controllers") + rows(body, "hardware", "ide_controllers")
+    controllers = (_scsi(r, pci) for r in storage if _on_pci(r))
     return Summary(
         system=_system(body),
         cpu=_cpu(body),
         memory=_memory(body),
-        nics=tuple(_nic(r) for r in rows(body, "network", "adapters") if _is_hardware_adapter(r)),
-        scsi_controllers=tuple(_scsi(r, pci) for r in rows(body, "hardware", "scsi_controllers") if _on_pci(r)),
+        nics=tuple(sorted(nics, key=lambda n: pci_order(n.pci_address))),
+        scsi_controllers=tuple(sorted(controllers, key=lambda c: pci_order(c.pci_address))),
         disks=_disks(body),
         os=_os(body),
         windows=_windows(body),

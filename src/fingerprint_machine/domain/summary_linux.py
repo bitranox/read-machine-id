@@ -36,6 +36,7 @@ from .summary_values import (
     integer,
     node,
     obj,
+    pci_order,
     rows,
     split_pci_address,
     text,
@@ -45,6 +46,8 @@ if TYPE_CHECKING:
     from .json_types import JsonObject, JsonValue
 
 _VIRTUAL = "/virtual/"
+# SCSI peripheral device type 5 (CD/DVD): Windows lists optical drives apart from its disk drives.
+_OPTICAL = 5
 # tpm_version_major as the TPM Base Services name the version on Windows.
 _TPM_VERSIONS = {"1": "1.2", "2": "2.0"}
 
@@ -141,12 +144,25 @@ def _sas_wwid(row: JsonObject, dsn: str | None) -> str | None:
     return vmware_pvscsi_sas_wwid_from_dsn(vendor=vendor, device=device, dsn=number)
 
 
-def _controller(row: JsonObject) -> ScsiControllerSummary:
+def _host_drivers(body: JsonObject) -> dict[str, str]:
+    """The SCSI driver of each controller, by its PCI address, from the SCSI hosts it carries."""
+    drivers: dict[str, str] = {}
+    for host in rows(body, "disks", "scsi_hosts"):
+        address, name = text(host.get("controller")), text(host.get("proc_name"))
+        if address is not None and name is not None:
+            drivers.setdefault(address, name)
+    return drivers
+
+
+def _controller(row: JsonObject, host_drivers: dict[str, str]) -> ScsiControllerSummary:
     dsn = canonical_dsn(row.get("device_serial_number"))
+    address = text(row.get("address"))
     return ScsiControllerSummary(
         pci_serial=dsn,
-        pci_address=text(row.get("address")),
-        driver=text(row.get("driver")),
+        pci_address=address,
+        # A virtio controller's PCI driver is virtio-pci, the same for every virtio device; the
+        # SCSI host it registers names the storage driver (virtio_scsi), as Windows does (vioscsi).
+        driver=(host_drivers.get(address) if address is not None else None) or text(row.get("driver")),
         sas_wwid=_sas_wwid(row, dsn),
     )
 
@@ -162,6 +178,14 @@ def _partition_table(record: JsonObject) -> tuple[int | None, str | None]:
     return None, None
 
 
+def _logical_unit_designator(device: JsonObject) -> str | None:
+    """The first VPD page 0x83 designator naming the logical unit, as Windows takes it for UniqueId."""
+    for designator in rows(device, "vpd_identifiers"):
+        if designator.get("association") == "logical_unit":
+            return text(designator.get("value"))
+    return None
+
+
 def _disk(record: JsonObject) -> DiskSummary:
     device = obj(record, "device")
     signature, guid = _partition_table(record)
@@ -172,10 +196,17 @@ def _disk(record: JsonObject) -> DiskSummary:
         size=integer(record.get("size_bytes")),
         mbr_signature=signature,
         gpt_guid=guid,
-        # An NVMe namespace has its own wwid; a SCSI disk's is on its device.
-        unique_id=canonical_disk_id(record.get("wwid")) or canonical_disk_id(device.get("wwid")),
+        # An NVMe namespace has its own wwid; a SCSI disk's is on its device. A disk whose only
+        # designator is vendor specific has no kernel wwid, and Windows reports that designator.
+        unique_id=canonical_disk_id(record.get("wwid"))
+        or canonical_disk_id(device.get("wwid"))
+        or _logical_unit_designator(device),
         controller=text(record.get("controller")),
     )
+
+
+def _is_optical(record: JsonObject) -> bool:
+    return integer(obj(record, "device").get("type")) == _OPTICAL
 
 
 def _os(body: JsonObject) -> OsSummary:
@@ -214,14 +245,17 @@ def summarize_linux(body: JsonObject) -> Summary:
         >>> [(n.name, n.mac) for n in s.nics], s.windows.edition
         ([('ens192', '00:50:56:00:00:01')], None)
     """
-    slots = _slots(body)
+    slots, host_drivers = _slots(body), _host_drivers(body)
+    nics = (_nic(r, slots) for r in _hardware(rows(body, "network", "adapters")))
+    controllers = (_controller(r, host_drivers) for r in rows(body, "disks", "controllers"))
+    disks = (r for r in _hardware(rows(body, "disks", "block_devices")) if not _is_optical(r))
     return Summary(
         system=_system(body),
         cpu=_cpu(body),
         memory=_memory(body),
-        nics=tuple(_nic(r, slots) for r in _hardware(rows(body, "network", "adapters"))),
-        scsi_controllers=tuple(_controller(r) for r in rows(body, "disks", "controllers")),
-        disks=tuple(_disk(r) for r in _hardware(rows(body, "disks", "block_devices"))),
+        nics=tuple(sorted(nics, key=lambda n: pci_order(n.pci_address))),
+        scsi_controllers=tuple(sorted(controllers, key=lambda c: pci_order(c.pci_address))),
+        disks=tuple(_disk(r) for r in disks),
         os=_os(body),
         security=_security(body),
     )

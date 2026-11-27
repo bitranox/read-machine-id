@@ -140,3 +140,71 @@ def test_a_windows_adapter_without_a_driver_file_name_takes_it_from_the_driver_p
     record: JsonObject = {"adapter": {"Name": "Ethernet0", "HardwareInterface": True, "DriverName": path}}
     (nic,) = summarize_windows({"network": {"adapters": [record]}}).nics
     assert nic.driver == "netkvm"
+
+
+_SCSI_PATH = "../devices/pci0000:00/0000:00:1c.0/0000:0a:01.0/virtio2/host0/target0:0:0/0:0:0:0/block/sda"
+
+
+@pytest.mark.os_agnostic
+def test_linux_leaves_optical_drives_out_as_windows_lists_disk_drives_only() -> None:
+    dvd: JsonObject = {"name": "sr0", "device_path": "../devices/pci0000:00/0000:00:1f.2/ata1/host1/block/sr0",
+                       "device": {"model": "Example DVD", "type": 5}}  # fmt: skip
+    disk: JsonObject = {"name": "sda", "device_path": _SCSI_PATH, "device": {"model": "Example Disk", "type": 0}}
+    summary = summarize_linux({"disks": {"block_devices": [dvd, disk]}})
+    assert [d.model for d in summary.disks] == ["Example Disk"]
+
+
+@pytest.mark.os_agnostic
+def test_a_disk_with_only_a_vendor_specific_designator_gives_it_as_its_id_on_both_oses() -> None:
+    # A virtual SCSI disk with no serial has no wwid; Windows reports that designator as its
+    # UniqueId (format 0, vendor specific), so Linux takes it from VPD page 0x83 too.
+    designator: JsonObject = {"type": "vendor_specific", "association": "logical_unit", "value": "drive-scsi0"}
+    port: JsonObject = {"type": "vendor_specific", "association": "target_port", "value": "port-1"}
+    disk: JsonObject = {"name": "sda", "device_path": _SCSI_PATH,
+                        "device": {"wwid": {"error": "EINVAL"}, "vpd_identifiers": [port, designator]}}  # fmt: skip
+    (linux,) = summarize_linux({"disks": {"block_devices": [disk]}}).disks
+    windows_body: JsonObject = {"disks": {"wmi": [{"Index": 0}], "storage": [
+        {"Number": 0, "UniqueId": "drive-scsi0", "UniqueIdFormat": 0}]}}  # fmt: skip
+    (windows,) = summarize_windows(windows_body).disks
+    assert (linux.unique_id, windows.unique_id) == ("drive-scsi0", "drive-scsi0")
+
+
+@pytest.mark.os_agnostic
+def test_a_linux_controller_names_the_scsi_driver_behind_a_generic_pci_driver() -> None:
+    controller: JsonObject = {"address": "0000:0a:01.0", "driver": "virtio-pci"}
+    host: JsonObject = {"name": "host0", "proc_name": "virtio_scsi", "controller": "0000:0a:01.0"}
+    body: JsonObject = {"disks": {"controllers": [controller], "scsi_hosts": [host]}}
+    (summary_controller,) = summarize_linux(body).scsi_controllers
+    assert summary_controller.driver == "virtio_scsi"
+
+
+@pytest.mark.os_agnostic
+def test_windows_lists_pci_ahci_controllers_and_both_oses_order_by_pci_address() -> None:
+    ahci_pnp = "PCI\\VEN_8086&DEV_2922&SUBSYS_11001AF4&REV_02\\3&0&0&FA"
+    scsi_pnp = "PCI\\VEN_1AF4&DEV_1004&SUBSYS_00081AF4&REV_00\\3&0&0&08"
+    windows_body: JsonObject = {
+        "hardware": {
+            "scsi_controllers": [{"Name": "Example SCSI", "PNPDeviceID": scsi_pnp}],
+            "ide_controllers": [{"Name": "Example AHCI", "PNPDeviceID": ahci_pnp},
+                                {"Name": "Example IDE", "PNPDeviceID": "ROOT\\IDE\\0000"}],
+        },
+        "pci": {"devices": [{"instance_id": scsi_pnp, "address": "0000:0a:01.0"},
+                            {"instance_id": ahci_pnp, "address": "0000:00:1f.2"}]},
+    }  # fmt: skip
+    linux_body: JsonObject = {"disks": {"controllers": [{"address": "0000:0a:01.0"}, {"address": "0000:00:1f.2"}]}}
+    windows = [c.pci_address for c in summarize_windows(windows_body).scsi_controllers]
+    linux = [c.pci_address for c in summarize_linux(linux_body).scsi_controllers]
+    assert windows == linux == ["0000:00:1f.2", "0000:0a:01.0"]
+
+
+@pytest.mark.os_agnostic
+def test_a_windows_disk_model_is_the_inquiry_product_as_linux_reads_it() -> None:
+    # Win32_DiskDrive appends the vendor and "SCSI Disk Device"; MSFT_Disk keeps the INQUIRY product.
+    windows_body: JsonObject = {"disks": {
+        "wmi": [{"Index": 0, "Model": "Example Example Disk SCSI Disk Device"}],
+        "storage": [{"Number": 0, "Model": "Example Disk    "}],
+    }}  # fmt: skip
+    linux_disk: JsonObject = {"name": "sda", "device_path": _SCSI_PATH, "device": {"model": "Example Disk    "}}
+    (windows,) = summarize_windows(windows_body).disks
+    (linux,) = summarize_linux({"disks": {"block_devices": [linux_disk]}}).disks
+    assert windows.model == linux.model == "Example Disk"

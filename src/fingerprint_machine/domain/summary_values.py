@@ -16,6 +16,7 @@ Contents:
     * :func:`dsn_from_instance` - the Device Serial Number in a Windows PnP instance id, lspci form.
     * :func:`pci_address` - a PCI address from segment, bus, device and function numbers.
     * :func:`split_pci_address` - bus, device and function of a ``dddd:bb:dd.f`` address.
+    * :func:`pci_order` - a sort key that puts devices in PCI address order, unplaced ones last.
     * :func:`memory_device_bytes` - the size of an SMBIOS type 17 memory device.
     * :func:`processor_id` - the Windows ``ProcessorId`` built from raw CPUID leaf 1.
 """
@@ -228,6 +229,19 @@ def pci_address(*, segment: int, bus: int | None, device: int | None, function: 
     return f"{segment:04x}:{bus:02x}:{device:02x}.{function:x}"
 
 
+def pci_order(address: str | None) -> tuple[bool, str]:
+    """Return a sort key that orders by PCI address and puts a device with none last.
+
+    Each OS lists devices in its own order (WMI's, the interface names'); sorting both by address
+    lines up the n-th NIC or controller of a Windows and a Linux reading of one machine.
+
+    Example:
+        >>> sorted(["0000:0a:01.0", None, "0000:00:1f.2"], key=pci_order)
+        ['0000:00:1f.2', '0000:0a:01.0', None]
+    """
+    return (address is None, address or "")
+
+
 def split_pci_address(address: str | None) -> tuple[int | None, int | None, int | None]:
     """Return the bus, device and function numbers of a ``dddd:bb:dd.f`` address.
 
@@ -293,6 +307,7 @@ __all__ = [
     "node",
     "obj",
     "pci_address",
+    "pci_order",
     "processor_id",
     "rows",
     "split_pci_address",

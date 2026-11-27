@@ -98,8 +98,15 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
   Linux with every field empty. The summary lists hardware only, on both OSes: on Linux devices
   under `/sys/devices/virtual` (loopback, bridges, loop and device-mapper disks) are left out, on
   Windows adapters that are no hardware interface (tunnel and VPN adapters) and storage
-  controllers off the PCI bus (Storage Spaces). The full sections still list them. A NIC's
-  `driver` on Windows comes from the driver's path when the adapter names no driver file.
+  controllers off the PCI bus (Storage Spaces), and optical drives on Linux, as Windows lists them
+  apart from its disk drives. The full sections still list them. Storage controllers include
+  AHCI on both OSes (Windows files it under its IDE controllers). NICs and storage controllers are
+  in PCI address order on both, so the n-th entry of two readings of one machine is the same
+  device. A Linux controller's `driver` is the SCSI driver it registers (`virtio_scsi`, not the
+  generic `virtio-pci`); a Windows NIC's comes from the driver's path when the adapter names no
+  driver file; a Windows disk's `model` is the SCSI INQUIRY product, as Linux reads it, and a
+  Linux disk with no kernel WWID takes its VPD 0x83 logical-unit designator as `unique_id`, as
+  Windows does.
 - `compare` names where each field comes from in a `source` column (`smbios type 1 system uuid`,
   `pci device serial number`, `cpuid 0x40000000 hypervisor signature`, ...), in the text table and
   in the JSON rows, so a comparison of two machines reads as a list of values to adjust.
