@@ -1,4 +1,4 @@
-# Default configuration for read_machine_id
+# Default configuration for read-machine-id
 #
 # This file contains the default configuration that ships with the application.
 # Additional settings can be placed in defaultconfig.d/*.toml
@@ -8,21 +8,21 @@
 #   - Application-level config:
 #        - Linux:   /etc/xdg/read-machine-id/config.toml and config.d/*
 #                   (then /etc/read-machine-id/config.toml and config.d/*)
-#        - macOS:   /Library/Application Support/bitranox/read_machine_id/config.toml and config.d/*
-#        - Windows: C:\ProgramData\bitranox\read_machine_id\config.toml and config.d\*
+#        - macOS:   /Library/Application Support/bitranox/read-machine-id/config.toml and config.d/*
+#        - Windows: C:\ProgramData\bitranox\read-machine-id\config.toml and config.d\*
 #   - Host-level config (<hostname> is this machine's host name):
 #        - Linux:   /etc/xdg/read-machine-id/hosts/<hostname>.toml and hosts/<hostname>.d/*
-#        - macOS:   /Library/Application Support/bitranox/read_machine_id/hosts/<hostname>.toml
-#        - Windows: C:\ProgramData\bitranox\read_machine_id\hosts\<hostname>.toml
+#        - macOS:   /Library/Application Support/bitranox/read-machine-id/hosts/<hostname>.toml
+#        - Windows: C:\ProgramData\bitranox\read-machine-id\hosts\<hostname>.toml
 #   - User-level config:
 #        - Linux:   ~/.config/read-machine-id/config.toml and config.d/*
 #                   ($XDG_CONFIG_HOME replaces ~/.config when set)
-#        - macOS:   ~/Library/Application Support/bitranox/read_machine_id/config.toml and config.d/*
-#        - Windows: %APPDATA%\bitranox\read_machine_id\config.toml and config.d\*
+#        - macOS:   ~/Library/Application Support/bitranox/read-machine-id/config.toml and config.d/*
+#        - Windows: %APPDATA%\bitranox\read-machine-id\config.toml and config.d\*
 #   - .env file: the first .env found in the current directory or a parent directory; when
 #     there is none, $XDG_CONFIG_HOME/read-machine-id/.env (Linux; ~/.config when
-#     unset), ~/Library/Application Support/bitranox/read_machine_id/.env (macOS),
-#     %APPDATA%\bitranox\read_machine_id\.env (Windows)
+#     unset), ~/Library/Application Support/bitranox/read-machine-id/.env (macOS),
+#     %APPDATA%\bitranox\read-machine-id\.env (Windows)
 #   - Environment variables: Prefix with READ_MACHINE_ID___
 #
 # Precedence (lowest to highest): defaults -> app -> host -> user -> dotenv -> env

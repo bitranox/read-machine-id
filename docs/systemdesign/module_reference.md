@@ -12,9 +12,20 @@ moves or removes a module, a CLI option or a public name.
 ### Domain Layer
 - `src/read_machine_id/domain/enums.py`  -  Type-safe enums (OutputFormat, DeployTarget)
 - `src/read_machine_id/domain/errors.py`  -  Domain exceptions (ConfigurationError)
+- `src/read_machine_id/domain/json_types.py`  -  `JsonValue` / `JsonObject` type aliases for readings
+- `src/read_machine_id/domain/machine_errors.py`  -  `SourceError`, `MissingKeyError`, `UnsupportedPlatformError`, `NotAReadingError`
+- `src/read_machine_id/domain/smbios.py`  -  SMBIOS (DSP0134) parser and per-type decoders; `split_raw_smbios` for the RSMB block
+- `src/read_machine_id/domain/identity.py`  -  PCI instance serials, VMware PVSCSI SAS WWID, product-key masking, withheld registry values, machine SID, ACPI/MSDM, TBS device info
+- `src/read_machine_id/domain/certificates.py`  -  EK certificate from a registry store blob; public fields only
+- `src/read_machine_id/domain/network.py`  -  Joins the per-adapter WMI classes and the network class key into one record per adapter
+- `src/read_machine_id/domain/summary.py`  -  The `summary` block of a reading
+- `src/read_machine_id/domain/compare.py`  -  Flatten, compare and score two readings; volatile and `newer-probe-only` rules
 
 ### Application Layer
 - `src/read_machine_id/application/ports.py`  -  Callable Protocol definitions for adapter functions
+- `src/read_machine_id/application/machine_ports.py`  -  `PlatformSource` and `RegistrySource` protocols, the `Sources` bundle
+- `src/read_machine_id/application/collect.py`  -  Builds a reading: every section, each question guarded, product keys masked
+- `src/read_machine_id/application/readings.py`  -  Load and save readings, compare two files, check this machine against a baseline
 
 ### Adapters Layer
 - `src/read_machine_id/adapters/config/loader.py`  -  Configuration loading with LRU caching
@@ -35,6 +46,12 @@ moves or removes a module, a CLI option or a public name.
   - `commands/info.py`  -  info, fail commands
   - `commands/config.py`  -  config, config-deploy, config-generate-examples commands
   - `commands/logging.py`  -  logdemo command
+  - `commands/machine.py`  -  collect, compare, check commands
+  - `machine_output.py`  -  JSON envelope, `--json-bare`, rich tables and `MachineExit` codes for the machine commands
+- `src/read_machine_id/adapters/windows/platform.py`  -  `PwshpyPlatformSource`: WMI/CIM through pwshpy, firmware tables
+- `src/read_machine_id/adapters/windows/firmware.py`  -  ctypes calls: `GetSystemFirmwareTable` (RSMB, ACPI), `GetFirmwareType`, `Tbsi_GetDeviceInfo`
+- `src/read_machine_id/adapters/windows/registry.py`  -  `LibRegistrySource`: registry through lib_registry (fake_winreg off Windows)
+- `src/read_machine_id/adapters/fixture.py`  -  `FixtureSources`: replays a recorded machine from JSON (the test seam)
 
 ### Adapters Layer (In-Memory / Testing)
 - `src/read_machine_id/adapters/memory/__init__.py`  -  Public facade + Protocol conformance assertions
@@ -59,6 +76,7 @@ moves or removes a module, a CLI option or a public name.
 - `conftest.py` (repository root)  -  The two configuration-layer redirects; at the root so they also reach the doctests `--doctest-modules` collects from `src/`
 - `tests/conftest.py`  -  Shared fixtures (see Test Fixtures below)
 - `tests/layer_roots.py`  -  The environment variables that place each configuration layer, shared by both conftests and the subprocess tests
+- `tests/machine_builder.py`  -  Synthetic SMBIOS/ACPI bytes, an EK certificate and a whole recorded machine with a planted product key
 - `tests/test_cache_effectiveness.py`  -  Configuration loading returns consistent (cached) results
 - `tests/test_cli_config.py`  -  `config`, `config-deploy`, `config-generate-examples` commands
 - `tests/test_cli_config_errors.py`  -  A configuration that cannot be loaded: who reports it, and who still runs
@@ -72,19 +90,25 @@ moves or removes a module, a CLI option or a public name.
 - `tests/test_declared_dependencies.py`  -  Every third-party module imported at run time is a declared dependency
 - `tests/test_deploy_mode_safety.py`  -  `--dir-mode`/`--file-mode` literal, range and safety checks
 - `tests/test_deploy_permissions.py`  -  `config-deploy` permission options
+- `tests/test_compare_and_join.py`  -  Volatile and `newer-probe-only` compare rules, the per-adapter NIC join
 - `tests/test_display.py`  -  Config display formatting tests
 - `tests/test_enums.py`  -  Domain enum tests
 - `tests/test_errors.py`  -  Domain error types
+- `tests/test_identity_values.py`  -  SAS WWID, key masking, MSDM, TBS, machine SID, EK certificates
 - `tests/test_logging.py`  -  Logging configuration model
 - `tests/test_logging_dotenv_isolation.py`  -  Only `LOG_*` lines of a `.env` reach the environment; an invalid `[lib_log_rich]` section or `LOG_*` variable is a configuration failure that leaves logging running
 - `tests/test_memory_logging.py`  -  Testing-composition logging runtime and the per-test logging reset
+- `tests/test_machine_cli.py`  -  collect, compare and check end to end on a recorded machine
 - `tests/test_metadata.py`  -  Package metadata and PEP 561 marker tests
 - `tests/test_metadata_sync.py`  -  `__init__conf__` constants stay in sync with `pyproject.toml`
 - `tests/test_module_entry.py`  -  `python -m` entry tests
 - `tests/test_permission_defaults.py`  -  `config-deploy` hands permissions to lib_layered_config: `--set` overrides, `.env` and deployed destinations never decide a mode, refusals exit 78
 - `tests/test_ports.py`  -  Protocol conformance tests
 - `tests/test_property_overrides.py`  -  Property-based `--set` override tests
+- `tests/test_registry_adapter.py`  -  `LibRegistrySource` over fake_winreg (POSIX only)
 - `tests/test_safe_console.py`  -  Legacy-codepage output tests, plus the guard forbidding direct `click.echo`
+- `tests/test_smbios_decode.py`  -  SMBIOS decoding from hand-built bytes, truncation, the RSMB header
+- `tests/test_windows_collect.py`  -  A real collect on Windows (Windows only)
 
 ---
 
@@ -100,6 +124,8 @@ moves or removes a module, a CLI option or a public name.
 | `adapters/logging/`    | Adapters    | lib_log_rich initialization                   |
 | `adapters/cli/`        | Adapters    | Click CLI framework integration               |
 | `adapters/memory/`     | Adapters    | In-memory implementations for testing         |
+| `adapters/windows/`    | Adapters    | Windows sources: WMI, firmware, registry      |
+| `adapters/fixture.py`  | Adapters    | Recorded-machine source for tests             |
 | `composition/`         | Composition | Wires adapters to ports                       |
 
 ### Import Enforcement
@@ -145,6 +171,27 @@ POSIX-conventional exit codes defined in `adapters/cli/exit_codes.py`:
 | `--set SECTION.KEY=VALUE`      | Override configuration setting (repeatable) |
 | `--env-file PATH`              | Explicit `.env` file path                   |
 | `-h, --help`                   | Show help and exit                          |
+
+### collect
+
+Read this Windows machine. Options: `--section NAME` (repeatable), `--label TEXT`, `--out FILE`,
+`--json`, `--json-bare`.
+
+**Exit codes:** 0 done; 2 not Windows
+
+### compare
+
+Compare two saved readings: `compare ORIGINAL ACTUAL`. Options: `--diff-only`, `--out FILE`,
+`--json`, `--json-bare`.
+
+**Exit codes:** 0 no differences; 1 differences; 2 a file that is not a reading
+
+### check
+
+Read this machine and compare it with a baseline: `check BASELINE`. Options: `--diff-only`,
+`--save FILE` (the fresh reading), `--out FILE` (the comparison), `--json`, `--json-bare`.
+
+**Exit codes:** 0 no differences; 1 differences; 2 not Windows or not a reading
 
 ### info
 

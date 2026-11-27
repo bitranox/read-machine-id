@@ -1,212 +1,244 @@
-# read_machine_id
+# read-machine-id
 
 <!-- Badges -->
-[![CI](https://github.com/bitranox/read_machine_id/actions/workflows/default_cicd_public.yml/badge.svg)](https://github.com/bitranox/read_machine_id/actions/workflows/default_cicd_public.yml)
-[![CodeQL](https://github.com/bitranox/read_machine_id/actions/workflows/codeql.yml/badge.svg)](https://github.com/bitranox/read_machine_id/actions/workflows/codeql.yml)
+[![CI](https://github.com/bitranox/read-machine-id/actions/workflows/default_cicd_public.yml/badge.svg)](https://github.com/bitranox/read-machine-id/actions/workflows/default_cicd_public.yml)
+[![CodeQL](https://github.com/bitranox/read-machine-id/actions/workflows/codeql.yml/badge.svg)](https://github.com/bitranox/read-machine-id/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Open in Codespaces](https://img.shields.io/badge/Codespaces-Open-blue?logo=github&logoColor=white&style=flat-square)](https://codespaces.new/bitranox/read_machine_id?quickstart=1)
-[![PyPI](https://img.shields.io/pypi/v/read_machine_id.svg)](https://pypi.org/project/read_machine_id/)
-[![PyPI - Downloads](https://img.shields.io/pypi/dm/read_machine_id.svg)](https://pypi.org/project/read_machine_id/)
+[![PyPI](https://img.shields.io/pypi/v/read-machine-id.svg)](https://pypi.org/project/read-machine-id/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/read-machine-id.svg)](https://pypi.org/project/read-machine-id/)
 [![Code Style: Ruff](https://img.shields.io/badge/Code%20Style-Ruff-46A3FF?logo=ruff&labelColor=000)](https://docs.astral.sh/ruff/)
-[![codecov](https://codecov.io/gh/bitranox/read_machine_id/graph/badge.svg?token=UFBaUDIgRk)](https://codecov.io/gh/bitranox/read_machine_id)
-[![Maintainability](https://qlty.sh/badges/041ba2c1-37d6-40bb-85a0-ec5a8a0aca0c/maintainability.svg)](https://qlty.sh/gh/bitranox/projects/read_machine_id)
+[![codecov](https://codecov.io/gh/bitranox/read-machine-id/graph/badge.svg)](https://codecov.io/gh/bitranox/read-machine-id)
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
+`read-machine-id` reads what a Windows machine reports about itself and writes it out as one JSON
+document: the SMBIOS table, every network adapter with its PCI location and driver settings, disk
+and controller serials, every device Windows has seen, the Windows ids and licensing state, and the
+TPM and Secure Boot state. It can also compare two such readings field by field.
 
-`read_machine_id` is a template CLI application demonstrating configuration management and structured logging. It showcases rich-click for ergonomics and lib_cli_exit_tools for exits, providing a solid foundation for building CLI applications.
-- CLI entry point styled with rich-click (rich output + click ergonomics).
-- Layered configuration system with lib_layered_config (defaults -> app -> host -> user -> .env -> env).
-  The `.env` is the first one found from the current directory upward; when there is none,
-  `$XDG_CONFIG_HOME/read-machine-id/.env` (`~/.config/...` when unset) is read on Linux
-  (see [CONFIG.md](CONFIG.md) for macOS and Windows).
-- Rich structured logging with lib_log_rich (console, journald, eventlog, Graylog/GELF).
-- Exit-code and messaging helpers powered by lib_cli_exit_tools.
-- Metadata helpers ready for packaging, testing, and release automation.
+What it is for:
 
+- You move a machine to other hardware or another hypervisor and want to know which identity
+  values changed: system UUID, serials, MAC addresses, NIC slot numbers, disk ids, the Windows
+  device id. Any of them can break licensing, activation or a driver binding.
+- You keep a baseline of a machine and check later that nothing drifted.
+- You want a hardware and identity inventory from a script, as JSON rather than screen text.
 
-### Python 3.10+ Baseline
+It works on any Windows machine, physical or virtual. Reading needs Windows; comparing two saved
+readings also works on Linux and macOS.
 
-- The project targets **Python 3.10 and newer**.
-- Runtime dependencies are declared with >= floors in pyproject.toml. Dev
-  dependencies (pytest, ruff, pyright, bandit, etc.) are declared the same way.
-- CI workflows exercise GitHub's rolling runner images (`ubuntu-latest`,
-  `macos-latest`, `windows-latest`) and cover CPython 3.10 through 3.15
-  alongside the latest available 3.x release provided by Actions.
+---
+
+## Quick start
+
+On the Windows machine, with [uv](https://docs.astral.sh/uv/) installed:
+
+```powershell
+# Read this machine, show a summary, and save the whole reading
+uvx read-machine-id collect --out before.json
+
+# Later, or after the move: read again and compare with the saved one
+uvx read-machine-id check before.json --save after.json --diff-only
+
+# Compare two saved readings anywhere, Linux and macOS included
+uvx read-machine-id compare before.json after.json --diff-only
+```
+
+Run it from an elevated prompt if you can. Some sources, BitLocker among them, answer only to an
+administrator. Without elevation those questions are skipped and listed, and the rest of the
+reading is not affected.
+
+---
+
+## Commands
+
+### `collect`
+
+```text
+read-machine-id collect [--section NAME ...] [--label TEXT] [--out FILE] [--json | --json-bare]
+```
+
+Reads the machine. Without options it prints a summary table. `--json` prints the whole reading
+inside an envelope, `--json-bare` prints only the reading. `--out` also saves the reading to a
+file, `--label` names it (default: the computer name), and `--section` reads only the sections you
+name, e.g. `--section network --section smbios`.
+
+### `compare`
+
+```text
+read-machine-id compare ORIGINAL ACTUAL [--diff-only] [--out FILE] [--json | --json-bare]
+```
+
+Compares two saved readings and marks every field as same, different, or present on one side only.
+Exits 1 when anything differs. `--out` saves the comparison.
+
+### `check`
+
+```text
+read-machine-id check BASELINE [--diff-only] [--save FILE] [--out FILE] [--json | --json-bare]
+```
+
+Reads this machine and compares it with a saved baseline in one step. `--save` keeps the fresh
+reading and `--out` keeps the comparison. Exits 1 when anything differs.
+
+### Exit codes and JSON
+
+| Exit code | Meaning                                                                    |
+|-----------|----------------------------------------------------------------------------|
+| 0         | done; for `compare` and `check`, no differences                            |
+| 1         | `compare` or `check` found differences                                     |
+| 2         | refused: not Windows (`collect`, `check`), or a file that is not a reading |
+
+`--json` wraps the result as `{"ok": true, "command": ..., "data": ..., "skipped": [...]}`.
+`skipped` lists each question a source could not answer, with the reason, for example a WMI class
+the machine does not provide. A failure prints `{"ok": false, "command": ..., "error": {"type":
+..., "message": ...}}`. `--json-bare` prints only the data, and still prints JSON when it fails.
+Warnings go to standard error, so standard output can go straight into `jq` or a file.
+
+---
+
+## What a reading holds
+
+A reading starts with `meta` (tool version, schema version, time, label) and a `summary` of the
+values people look for most:
+
+```json
+{
+  "system": {
+    "manufacturer": "Example Systems",
+    "product": "Model X",
+    "serial": "SER-0001",
+    "uuid": "04030201-0605-0807-090A-0B0C0D0E0F10",
+    "sku": "SKU-9",
+    "family": "Family Y",
+    "bios_version": "V1.2"
+  },
+  "nics": [
+    {
+      "name": "Ethernet0",
+      "description": "vmxnet3 Ethernet Adapter",
+      "mac": "005056000001",
+      "interface_index": 6,
+      "pci_serial": "000C29FFFF000001",
+      "bus": 11, "device": 0, "function": 0, "slot": 160,
+      "class_key": "0007"
+    }
+  ],
+  "windows": {
+    "edition": "Professional",
+    "build": "26100.1000",
+    "product_id": "00330-80000-00000-AA111",
+    "device_id": "{DDDDDDDD-0000-0000-0000-000000000001}",
+    "machine_guid": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "machine_sid": "S-1-5-21-1000-2000-3000",
+    "license_status": 1,
+    "partial_product_key": "JK7LZ"
+  },
+  "security": { "firmware_type": "UEFI", "secure_boot": 1, "tpm_version": "2.0", "vbs_status": 0 }
+}
+```
+
+The values above are made up. The summary also has `cpu`, `memory`, `disks` and
+`scsi_controllers`; for a VMware PVSCSI controller the summary works out its SAS WWID from the
+controller's PCI serial.
+
+The full sections follow the summary. `--section` reads any of them alone:
+
+| Section    | What it holds                                                                                                                                       |
+|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `smbios`   | The raw SMBIOS table with every structure; BIOS, system, board, chassis, CPU, slots, memory, OEM strings and onboard devices decoded field by field |
+| `acpi`     | ACPI table headers (OEM ids), and whether an MSDM table holds a product key                                                                         |
+| `platform` | BIOS, computer system (domain or workgroup included), product, baseboard and enclosure from WMI, and the BIOS and system values in the registry     |
+| `cpu`      | Processors and caches                                                                                                                               |
+| `memory`   | Memory modules and arrays                                                                                                                           |
+| `disks`    | Disks, physical disks, partitions and volumes with their serials and GUIDs, and SAS or Fibre Channel initiator ports                                |
+| `network`  | Per adapter: PCI location, every advanced driver setting, offloads, RSS, power management, bindings, the network class key, addresses, routes, DNS  |
+| `hardware` | SCSI, IDE and USB controllers, CD drives, keyboards, mice, sound, monitors, serial ports, video                                                     |
+| `devices`  | Every device instance under the registry's `Enum` key, present or not, with hardware ids, location and driver                                       |
+| `windows`  | Operating system, the `CurrentVersion` key, device id, MachineGuid, machine SID, TCP/IP names, time zone, licensing, hotfixes, cloud join           |
+| `security` | TPM (WMI and TBS), cached EK certificates (public fields only), Secure Boot, Device Guard and VBS, BitLocker status                                 |
+| `services` | Every service with its state and start mode                                                                                                         |
+
+A question that cannot be answered (a missing WMI class, access denied) is recorded as
+`{"error": "..."}` in its place and listed under `skipped`, and the reading goes on.
+
+### What it never writes
+
+- Product keys are cut to their last five characters wherever they turn up: the
+  `OA3xOriginalProductKey` value, the ACPI MSDM table, licensing data. `DigitalProductId` and
+  `DigitalProductId4` are left out.
+- BitLocker: status and method only, never recovery keys or protectors.
+- EK certificates: subject, issuer, serial number, validity and thumbprints, not the certificate
+  itself.
+
+A reading still identifies the machine exactly (serials, MACs, SIDs, the Windows device id), so
+handle it like any other inventory data.
+
+### How comparing works
+
+Fields are compared by path, for example `smbios.system.serial` or
+`network.adapters[0].hardware[0].BusNumber`. Values that change on their own, such as CPU load,
+free memory, uptime or the last boot time, are shown but never counted as a difference. When the
+two readings come from different schema versions, a field only the newer one collects is marked
+`newer-probe-only` and is not counted either, so an old baseline still compares fairly.
 
 ---
 
 ## Install - recommended via uv
 
-[uv](https://docs.astral.sh/uv/) is an ultrafast Python package manager written in Rust (10-20x faster than pip/poetry).
-
-### Install uv (if not already installed) 
 ```bash
-# macOS/Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Copy the actual binaries
-cp /root/.local/bin/uv /usr/local/bin/uv
-cp /root/.local/bin/uvx /usr/local/bin/uvx
-
-# Ensure world-executable
-chmod 755 /usr/local/bin/uv /usr/local/bin/uvx
-
-# Windows (PowerShell)
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-### One-shot run (no install needed)
-
-```bash
+# One-shot run, no install
 uvx read-machine-id@latest --help
-```
 
-### Persistent install as CLI tool
-
-```bash
-# One-time install from PyPI (isolated environment, added to PATH)
+# Install as a command line tool (isolated environment, added to PATH)
 uv tool install read-machine-id
-# or from the git repository
-uv tool install --from "git+https://github.com/bitranox/read_machine_id.git" read-machine-id
-# Pick the interpreter explicitly if needed, e.g. --python 3.14
-# Update (requires network)
 uv tool upgrade read-machine-id
-# Run
-read-machine-id --help
-```
 
-### Install as project dependency
-
-```bash
-uv venv && source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
+# As a project dependency
 uv pip install read-machine-id
 ```
 
-For alternative install paths (pip, pipx, source builds, etc.), see
-[INSTALL.md](INSTALL.md). All supported methods register both the
-`read_machine_id` and `read-machine-id` commands on your PATH.
+For pip, pipx and source builds see [INSTALL.md](INSTALL.md).
 
-### Why we recommend uv: supply-chain protection
+### Supply-chain protection
 
-This repository commits a `uv.lock`. It pins every package the project needs, transitive
-dependencies included, to an exact version and to the hashes of that version's files. The
-`exclude-newer` setting under `[tool.uv]` in `pyproject.toml` adds a cooldown: uv leaves any
-release younger than that out of the lock. CI installs from the lock, so a hijacked release that
-gets pulled again within the cooldown never reaches our builds, and a file whose hash does not
-match is refused.
+This repository commits a `uv.lock`, which pins every package the project needs, transitive ones
+included, to an exact version and to the hashes of its files. The `exclude-newer` setting under
+`[tool.uv]` in `pyproject.toml` adds a cooldown: uv leaves any release younger than that out of the
+lock. CI installs from the lock, so a hijacked release that is pulled again within the cooldown
+never reaches our builds.
 
-That protection stays in this repository. The installable package declares only lower bounds
-(`>=`) for its dependencies, so a plain `pip install` takes the newest release of every transitive
-dependency at the moment you run it. If one of them was hijacked an hour earlier, you get the
-hijacked version. `pipx install` and `uv tool install` without options do the same.
-
-To install the command line tool with a cooldown of your own (uv then skips any release younger
-than 7 days, transitive ones included), or to run the exact tree our CI tests:
+The installed package declares only lower bounds (`>=`) for its dependencies, so a plain
+`pip install` takes the newest release of each dependency at that moment. To install with a
+cooldown of your own, or to run the exact tree CI tests:
 
 ```bash
-uv tool install --exclude-newer "7 days" read_machine_id
-git clone https://github.com/bitranox/read_machine_id.git && cd read_machine_id && uv sync --locked && uv run read_machine_id --help
-```
-
-If you depend on read_machine_id in your own project, give that project the same cooldown (7 days here, as
-an example) and commit the `uv.lock` that `uv add read_machine_id` writes:
-
-```toml
-[tool.uv]
-exclude-newer = "7 days"
+uv tool install --exclude-newer "7 days" read-machine-id
+git clone https://github.com/bitranox/read-machine-id.git && cd read-machine-id && uv sync --locked && uv run read-machine-id --help
 ```
 
 ---
 
-## Configuration
+## Configuration and logging
 
-See [CONFIG.md](CONFIG.md) for detailed documentation on the layered configuration system, including precedence rules, profile support, and customization best practices.
-
----
-
-## Quick Start
+The tool reads layered configuration (defaults, app, host, user, `.env`, environment) and logs
+through [lib_log_rich](https://github.com/bitranox/lib_log_rich). Reading a machine needs neither;
+see [CONFIG.md](CONFIG.md) to change log levels or targets. The `config`, `config-deploy`,
+`config-generate-examples`, `info`, `logdemo` and `fail` commands belong to this part:
 
 ```bash
-# Install
-uv tool install read-machine-id
-
-# Verify
-read-machine-id --version
-
-# deploy config files (user level; --target app or host needs sudo)
-read-machine-id config-deploy --target user
-
-# Try it out
-read-machine-id info
-read-machine-id config
+read-machine-id info                          # version and install details
+read-machine-id config                        # the merged configuration
+read-machine-id --set lib_log_rich.console_level=DEBUG collect
 ```
 
 ---
 
-## Usage
+## Further documentation
 
-The CLI leverages [rich-click](https://github.com/ewels/rich-click) so help output, validation errors, and prompts render with Rich styling while keeping the familiar click ergonomics.
-
-### Available Commands
-
-```bash
-# Display package information
-read-machine-id info
-
-# Error-handling demo
-read-machine-id fail
-read-machine-id --traceback fail
-
-# Configuration management
-read-machine-id config                         # Show current configuration
-read-machine-id config --format json           # Show as JSON
-read-machine-id config --section lib_log_rich  # Show specific section
-read-machine-id config --profile production    # Use a named profile
-
-# Deploy configuration templates to target directories
-# Without profile:
-read-machine-id config-deploy --target app    # -> /etc/xdg/{slug}/config.toml
-read-machine-id config-deploy --target host   # -> /etc/xdg/{slug}/hosts/{hostname}.toml
-read-machine-id config-deploy --target user   # -> ~/.config/{slug}/config.toml
-
-# With profile:
-read-machine-id config-deploy --target app --profile production   # -> /etc/xdg/{slug}/profile/production/config.toml
-read-machine-id config-deploy --target host --profile production  # -> /etc/xdg/{slug}/profile/production/hosts/{hostname}.toml
-read-machine-id config-deploy --target user --profile production  # -> ~/.config/{slug}/profile/production/config.toml
-
-# With custom permissions (POSIX only):
-read-machine-id config-deploy --target user --file-mode 640       # Files with rw-r----- (640)
-read-machine-id config-deploy --target user --dir-mode 750        # Directories with rwxr-x--- (750)
-read-machine-id config-deploy --target app --no-permissions       # Skip permission setting (use umask)
-
-# Profile names: alphanumeric, hyphens, underscores; max 64 chars; must start with letter/digit
-# See CONFIG.md for full validation rules
-
-# Deploy configuration examples
-read-machine-id config-generate-examples --destination ./examples
-
-# Load configuration from an explicit .env file (skips upward directory search)
-read-machine-id --env-file /path/to/.env config
-
-# Override configuration at runtime (repeatable --set)
-read-machine-id --set lib_log_rich.console_level=DEBUG config
-
-# Logging demo
-read-machine-id logdemo
-LOG_CONSOLE_LEVEL=DEBUG read-machine-id logdemo   # logdemo reads LOG_* only, not --set
-
-# All commands work with any entry point
-python -m read_machine_id info
-uvx read-machine-id info
-```
-
----
-
-## Further Documentation
-
-- [Install Guide](INSTALL.md)
-- [Development Handbook](DEVELOPMENT.md)
-- [Contributor Guide](CONTRIBUTING.md)
+- [Install guide](INSTALL.md)
+- [Configuration](CONFIG.md)
+- [Development handbook](DEVELOPMENT.md)
+- [Contributor guide](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
-- [Module Reference](docs/systemdesign/module_reference.md)
+- [Module reference](docs/systemdesign/module_reference.md)
 - [License](LICENSE)

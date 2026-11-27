@@ -69,7 +69,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 # install from PyPI
 pip install read-machine-id
 # optional install from GitHub
-pip install "git+https://github.com/bitranox/read_machine_id"
+pip install "git+https://github.com/bitranox/read-machine-id"
 # optional development install from local
 pip install -e ".[dev]"
 # optional install from local runtime only:
@@ -82,7 +82,7 @@ pip install .
 # install from PyPI
 pip install --user read-machine-id
 # optional install from GitHub
-pip install --user "git+https://github.com/bitranox/read_machine_id"
+pip install --user "git+https://github.com/bitranox/read-machine-id"
 # optional install from local
 pip install --user .
 ```
@@ -100,12 +100,12 @@ sudo apt install pipx
 # install via pipx from PyPI
 pipx install read-machine-id
 # optional install via pipx from GitHub
-pipx install "git+https://github.com/bitranox/read_machine_id"
+pipx install "git+https://github.com/bitranox/read-machine-id"
 # optional install from local
 pipx install .
 pipx upgrade read-machine-id
 # install from Git tag
-pipx install "git+https://github.com/bitranox/read_machine_id@v1.1.0"
+pipx install "git+https://github.com/bitranox/read-machine-id@v1.1.0"
 ```
 
 ## From Build Artifacts
@@ -131,7 +131,7 @@ pdm install
 ## Install Directly from Git
 
 ```bash
-pip install "git+https://github.com/bitranox/read_machine_id"
+pip install "git+https://github.com/bitranox/read-machine-id"
 ```
 
 ## System Package Managers (Optional Distribution Channels)

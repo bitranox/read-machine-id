@@ -49,7 +49,7 @@
 # Default: "read_machine_id" (from package name)
 # Environment Variable: READ_MACHINE_ID___LIB_LOG_RICH__SERVICE=my-application
 # .env: LIB_LOG_RICH__SERVICE=my-application
-service = "read_machine_id"
+service = "read-machine-id"
 
 # Purpose: Deployment environment label (dev, stage, prod, local, etc.)
 # Type: string (non-empty)

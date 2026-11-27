@@ -54,7 +54,7 @@ fallback: it is read only when no `.env` is found in the working directory or on
 |--------------|-------------------|-------------------|
 | `{slug}`     | `read-machine-id` | -                 |
 | `{vendor}`   | -                 | `bitranox`        |
-| `{app}`      | -                 | `read_machine_id` |
+| `{app}`      | -                 | `read-machine-id` |
 | `{hostname}` | System hostname   | System hostname   |
 
 ### Concrete Examples
@@ -65,10 +65,10 @@ fallback: it is read only when no `.env` is found in the working directory or on
 - Host config: `/etc/xdg/read-machine-id/hosts/myserver.toml`
 
 **macOS:**
-- User config: `~/Library/Application Support/bitranox/read_machine_id/config.toml`
+- User config: `~/Library/Application Support/bitranox/read-machine-id/config.toml`
 
 **Windows:**
-- User config: `%APPDATA%\bitranox\read_machine_id\config.toml`
+- User config: `%APPDATA%\bitranox\read-machine-id\config.toml`
 
 ---
 
@@ -524,10 +524,10 @@ prefix:
 ~/.config/read-machine-id/config.d/999-myconfig.toml
 
 # User-level customization (macOS)
-~/Library/Application Support/bitranox/read_machine_id/config.d/999-myconfig.toml
+~/Library/Application Support/bitranox/read-machine-id/config.d/999-myconfig.toml
 
 # User-level customization (Windows)
-%APPDATA%\bitranox\read_machine_id\config.d\999-myconfig.toml
+%APPDATA%\bitranox\read-machine-id\config.d\999-myconfig.toml
 
 # System-wide customization (Linux)
 /etc/xdg/read-machine-id/config.d/999-myconfig.toml

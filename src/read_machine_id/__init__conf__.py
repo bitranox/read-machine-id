@@ -38,11 +38,11 @@ __all__ = [
 #: Distribution name declared in ``pyproject.toml``.
 name = "read-machine-id"
 #: Human-readable summary shown in CLI help output.
-title = "Template CLI application with configuration management and structured logging"
+title = "Read a Windows machine's identity (SMBIOS, NICs, serials, TPM, licensing) as JSON and compare readings"
 #: Current release version pulled from ``pyproject.toml`` by automation.
-version = "2.4.5"
+version = "0.1.0"
 #: Repository homepage presented to users.
-homepage = "https://github.com/bitranox/read_machine_id"
+homepage = "https://github.com/bitranox/read-machine-id"
 #: Author attribution surfaced in CLI output.
 author = "bitranox"
 #: Contact email surfaced in CLI output.
@@ -53,7 +53,7 @@ shell_command = "read-machine-id"
 #: Vendor identifier for lib_layered_config paths (macOS/Windows)
 LAYEREDCONF_VENDOR: str = "bitranox"
 #: Application display name for lib_layered_config paths (macOS/Windows)
-LAYEREDCONF_APP: str = "read_machine_id"
+LAYEREDCONF_APP: str = "read-machine-id"
 #: Configuration slug for lib_layered_config Linux paths and environment variables
 LAYEREDCONF_SLUG: str = "read-machine-id"
 

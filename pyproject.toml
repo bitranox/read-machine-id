@@ -1,7 +1,7 @@
 [project]
 name = "read-machine-id"
-version = "2.4.5"
-description = "Template CLI application with configuration management and structured logging"
+version = "0.1.0"
+description = "Read a Windows machine's identity (SMBIOS, NICs, serials, TPM, licensing) as JSON and compare readings"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -28,7 +28,7 @@ dependencies = [
 ]
 license = { text = "MIT" }
 authors = [{ name = "bitranox", email = "bitranox@gmail.com" }]
-keywords = ["cli", "template", "config", "logging", "layered-config", "rich-click"]
+keywords = ["windows", "smbios", "hardware-inventory", "machine-identity", "tpm", "wmi", "registry", "serial-number", "json", "cli"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
@@ -60,9 +60,9 @@ os = ["ubuntu-latest", "windows-latest", "macos-latest"]
 free-threaded = ["3.14", "3.15"]
 
 [project.urls]
-Homepage = "https://github.com/bitranox/read_machine_id"
-Repository = "https://github.com/bitranox/read_machine_id.git"
-Issues = "https://github.com/bitranox/read_machine_id/issues"
+Homepage = "https://github.com/bitranox/read-machine-id"
+Repository = "https://github.com/bitranox/read-machine-id.git"
+Issues = "https://github.com/bitranox/read-machine-id/issues"
 
 [project.optional-dependencies]
 # orjson's fast path on 3.14+ GIL builds; a free-threaded build never imports it.
