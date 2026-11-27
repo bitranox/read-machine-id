@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from machine_builder import SYSTEM_UUID_BYTES, smbios_table, structure
 
-from fingerprint_machine.domain.smbios import decode_smbios, parse_smbios_structures, split_raw_smbios
+from fingerprint_machine.domain.smbios import RawSmbios, decode_smbios, parse_smbios_structures, split_raw_smbios
 
 if TYPE_CHECKING:
     from fingerprint_machine.domain.json_types import JsonObject, JsonValue
@@ -110,7 +110,10 @@ def test_a_short_structure_yields_none_for_missing_fields() -> None:
 def test_rsmb_block_is_split_into_table_and_version() -> None:
     table = smbios_table()
     raw = struct.pack("<BBBBI", 0, 3, 4, 0, len(table)) + table
-    assert split_raw_smbios(raw) == (table, "3.4")
+    got = split_raw_smbios(raw)
+    assert type(got) is RawSmbios
+    assert got.table == table
+    assert got.version == "3.4"
 
 
 @pytest.mark.os_agnostic

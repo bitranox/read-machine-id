@@ -299,6 +299,24 @@ def test_check_saves_the_fresh_reading_and_the_comparison(tmp_path: Path) -> Non
 
 
 @pytest.mark.os_agnostic
+def test_every_envelope_names_its_command_as_the_plain_word(tmp_path: Path) -> None:
+    saved, junk = tmp_path / "saved.json", tmp_path / "junk.json"
+    assert _run(["collect", "--out", str(saved)], _machine())[0] == 0
+    junk.write_text('{"hello": 1}', encoding="utf-8")
+    runs = {
+        ("compare", True): ["compare", str(saved), str(saved), "--json"],
+        ("check", True): ["check", str(saved), "--json"],
+        ("compare", False): ["compare", str(junk), str(junk), "--json"],
+        ("check", False): ["check", str(junk), "--json"],
+    }
+    for (verb, ok), args in runs.items():
+        _, out = _run(args, _machine())
+        envelope = _obj(json.loads(out))
+        assert (envelope["ok"], envelope["command"]) == (ok, verb), out
+        assert f'"command": "{verb}"' in out
+
+
+@pytest.mark.os_agnostic
 def test_a_file_that_is_not_a_reading_is_refused_as_json(tmp_path: Path) -> None:
     junk = tmp_path / "junk.json"
     junk.write_text('{"hello": 1}', encoding="utf-8")

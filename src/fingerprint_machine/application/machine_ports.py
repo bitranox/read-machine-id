@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from ..domain.devprops import DeviceProperty
     from ..domain.json_types import JsonObject, JsonValue
     from ..domain.numa import NumaNode
+    from ..domain.smbios import RawSmbios
 
 #: One registry value's data, as winreg returns it.
 type RegistryData = bytes | int | str | list[str] | None
@@ -71,7 +72,7 @@ class PlatformSource(Protocol):
         """
         ...
 
-    def smbios_table(self) -> tuple[bytes, str]:
+    def smbios_table(self) -> RawSmbios:
         """Return the raw SMBIOS structure table and the SMBIOS version, e.g. ``"3.1"``.
 
         Raises:

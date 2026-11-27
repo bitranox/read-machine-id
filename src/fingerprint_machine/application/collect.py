@@ -81,8 +81,8 @@ _MEMORY_TOTALS = (
 
 def read_smbios(src: WindowsSources) -> JsonValue:
     """Decode the firmware's SMBIOS table."""
-    table, version = src.platform.smbios_table()
-    return decode_smbios(table, version)
+    raw = src.platform.smbios_table()
+    return decode_smbios(raw.table, raw.version)
 
 
 def _acpi_headers(src: WindowsSources) -> JsonValue:

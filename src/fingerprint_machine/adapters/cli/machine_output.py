@@ -11,6 +11,7 @@ Machine output follows one contract for every command:
 Contents:
     * :class:`MachineExit` - the exit codes.
     * :class:`OutputMode` - how a command prints.
+    * :class:`MachineCommand` - the machine commands, as the envelope names them.
     * :func:`skipped_answers` - every question a reading could not answer.
     * :func:`emit_success` / :func:`emit_failure` - print the result.
 """
@@ -40,6 +41,14 @@ class MachineExit(IntEnum):
     ERROR = 2
 
 
+class MachineCommand(StrEnum):
+    """The machine commands, by the name the JSON envelope's ``command`` field carries."""
+
+    COLLECT = "collect"
+    COMPARE = "compare"
+    CHECK = "check"
+
+
 class OutputMode(StrEnum):
     """How a command prints its result."""
 
@@ -66,22 +75,25 @@ def _print_json(document: JsonValue) -> None:
     safe_console.echo(json.dumps(document, indent=2, ensure_ascii=False))
 
 
-def emit_success(mode: OutputMode, command: str, data: JsonValue, *, skipped: list[JsonValue], human: str) -> None:
+def emit_success(
+    mode: OutputMode, command: MachineCommand, data: JsonValue, *, skipped: list[JsonValue], human: str
+) -> None:
     """Print a successful result in ``mode``; ``human`` is the text for people."""
-    if mode is OutputMode.JSON:
-        _print_json({"ok": True, "command": command, "data": data, "skipped": skipped})
-    elif mode is OutputMode.JSON_BARE:
+    if mode == OutputMode.JSON:
+        _print_json({"ok": True, "command": command.value, "data": data, "skipped": skipped})
+    elif mode == OutputMode.JSON_BARE:
         _print_json(data)
     else:
         safe_console.echo(human, nl=False)
 
 
-def emit_failure(mode: OutputMode, command: str, exc: Exception) -> None:
+def emit_failure(mode: OutputMode, command: MachineCommand, exc: Exception) -> None:
     """Print a failure: a JSON object in the JSON modes, one ``Error:`` line on stderr otherwise."""
-    if mode is OutputMode.HUMAN:
+    if mode == OutputMode.HUMAN:
         safe_console.echo(f"Error: {exc}", err=True)
         return
-    _print_json({"ok": False, "command": command, "error": {"type": type(exc).__name__, "message": str(exc)}})
+    error: JsonObject = {"type": type(exc).__name__, "message": str(exc)}
+    _print_json({"ok": False, "command": command.value, "error": error})
 
 
 def _render(table: Table) -> str:
@@ -130,6 +142,7 @@ def render_comparison(cmp: Comparison, document: JsonObject, *, diff_only: bool)
 
 
 __all__ = [
+    "MachineCommand",
     "MachineExit",
     "OutputMode",
     "emit_failure",

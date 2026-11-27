@@ -3,6 +3,7 @@
 Contents:
     * :func:`load_reading` - a reading from a JSON file.
     * :func:`save_json` - write any JSON document to a file, atomically.
+    * :class:`ComparisonResult` - a comparison and the JSON document that reports it.
     * :func:`compare_files` - compare two saved readings.
     * :func:`check` - compare a saved baseline with a fresh reading of this machine.
 """
@@ -12,7 +13,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 from ..domain.compare import Comparison, compare_readings, comparison_document
 from ..domain.machine_errors import NotAReadingError
@@ -94,17 +95,25 @@ def save_json(path: Path, document: JsonValue) -> None:
         raise
 
 
-def compare_files(original: Path, actual: Path) -> tuple[Comparison, JsonObject]:
+class ComparisonResult(NamedTuple):
+    """A comparison of two readings and the JSON document that reports it."""
+
+    comparison: Comparison
+    document: JsonObject
+
+
+def compare_files(original: Path, actual: Path) -> ComparisonResult:
     """Compare two saved readings; return the comparison and its JSON document."""
     a, b = load_reading(original), load_reading(actual)
     cmp = compare_readings(a, b)
-    return cmp, comparison_document(cmp, (_label(a, original.name), _label(b, actual.name)))
+    return ComparisonResult(cmp, comparison_document(cmp, (_label(a, original.name), _label(b, actual.name))))
 
 
-def check(baseline: JsonObject, fresh: JsonObject) -> tuple[Comparison, JsonObject]:
+def check(baseline: JsonObject, fresh: JsonObject) -> ComparisonResult:
     """Compare a baseline reading with a fresh one; return the comparison and its document."""
     cmp = compare_readings(baseline, fresh)
-    return cmp, comparison_document(cmp, (_label(baseline, "baseline"), _label(fresh, "this machine")))
+    labels = (_label(baseline, "baseline"), _label(fresh, "this machine"))
+    return ComparisonResult(cmp, comparison_document(cmp, labels))
 
 
-__all__ = ["check", "compare_files", "load_reading", "save_json"]
+__all__ = ["ComparisonResult", "check", "compare_files", "load_reading", "save_json"]

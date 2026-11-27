@@ -15,6 +15,8 @@ Contents:
     * :class:`SmbiosStructure` - one structure with bounds-checked field readers.
     * :func:`parse_smbios_structures` - split a table into its structures.
     * :func:`decode_smbios` - the whole table as JSON.
+    * :class:`RawSmbios` - a structure table and the SMBIOS version it was written to.
+    * :func:`split_raw_smbios` - the table and version from Windows' RawSMBIOSData block.
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ import struct
 import uuid
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -374,7 +376,14 @@ def decode_smbios(table: bytes, version: str) -> JsonObject:
 _RAW_SMBIOS_HEADER = struct.Struct("<BBBBI")
 
 
-def split_raw_smbios(raw: bytes) -> tuple[bytes, str]:
+class RawSmbios(NamedTuple):
+    """A firmware's SMBIOS structure table and the SMBIOS version, e.g. ``"3.1"``."""
+
+    table: bytes
+    version: str
+
+
+def split_raw_smbios(raw: bytes) -> RawSmbios:
     """Return the structure table and the SMBIOS version from a RawSMBIOSData block.
 
     Raises:
@@ -382,7 +391,7 @@ def split_raw_smbios(raw: bytes) -> tuple[bytes, str]:
 
     Examples:
         >>> split_raw_smbios(bytes([0, 3, 1, 0]) + (3).to_bytes(4, "little") + b"abc")
-        (b'abc', '3.1')
+        RawSmbios(table=b'abc', version='3.1')
         >>> split_raw_smbios(b"\\0")
         Traceback (most recent call last):
         ...
@@ -396,7 +405,7 @@ def split_raw_smbios(raw: bytes) -> tuple[bytes, str]:
     if len(table) != length:
         msg = f"RawSMBIOSData states {length} table bytes, holds {len(table)}"
         raise ValueError(msg)
-    return table, f"{major}.{minor}"
+    return RawSmbios(table=table, version=f"{major}.{minor}")
 
 
-__all__ = ["SmbiosStructure", "SmbiosType", "decode_smbios", "parse_smbios_structures", "split_raw_smbios"]
+__all__ = ["RawSmbios", "SmbiosStructure", "SmbiosType", "decode_smbios", "parse_smbios_structures", "split_raw_smbios"]

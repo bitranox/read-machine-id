@@ -65,6 +65,7 @@ from ..domain.cim_method import CimMethodAnswer
 from ..domain.cpuid import CpuidQuery, CpuidRegs
 from ..domain.machine_errors import MissingKeyError, NotAReadingError, SourceError
 from ..domain.numa import NumaNode
+from ..domain.smbios import RawSmbios
 from ..domain.tpm2 import TpmResponseError
 from .linux.sysfs import FilesystemReader
 
@@ -184,9 +185,9 @@ class FixtureSources:
             raise SourceError(f"firmware.{name}: not recorded")
         return bytes.fromhex(text)
 
-    def smbios_table(self) -> tuple[bytes, str]:
+    def smbios_table(self) -> RawSmbios:
         """Return the recorded SMBIOS table and version."""
-        return self._hex("smbios_hex"), str(self._firmware.get("smbios_version", "0.0"))
+        return RawSmbios(table=self._hex("smbios_hex"), version=str(self._firmware.get("smbios_version", "0.0")))
 
     def acpi_tables(self) -> list[bytes]:
         """Return the recorded ACPI tables."""

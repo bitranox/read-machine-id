@@ -14,14 +14,23 @@ the DMA channels.
 Windows lists a message-signaled interrupt as an IRQ with a negative number; those are the
 device's ``msi_irqs``, the others its line-based ``irq``.
 
+Every resource class the section reads has its entry in the table that says how:
+
+    >>> from fingerprint_machine.application.windows_pci import _RESOURCES, ResourceClass
+    >>> set(_RESOURCES) == set(ResourceClass)
+    True
+
 Contents:
+    * :class:`ResourceClass` - the WMI resource classes a device's ranges come from.
     * :func:`read_windows_pci` - read the section.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from enum import StrEnum
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Final, NamedTuple
 
 from ..domain.devprops import PCI_PROPERTIES, DeviceProperty
 from ..domain.machine_errors import MissingKeyError
@@ -40,7 +49,7 @@ from .guard import ANSWER_ERRORS, guarded
 from .windows_values import optional_values, values
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Iterator, Mapping
 
     from ..domain.json_types import JsonObject, JsonValue
     from .machine_ports import WindowsSources
@@ -65,14 +74,46 @@ _WANTED = (
     DeviceProperty.ADDRESS,
     *PCI_PROPERTIES,
 )
-#: The resource classes ``Win32_PnPAllocatedResource`` points at: the key each is named by, the
-#: name a device's ``resources`` lists them under, and the properties kept per range.
-_RESOURCES: dict[str, tuple[str, str, tuple[str, ...]]] = {
-    "Win32_IRQResource": ("IRQNumber", "irqs", ("IRQNumber", "TriggerType", "TriggerLevel", "Shareable")),
-    "Win32_DeviceMemoryAddress": ("StartingAddress", "memory", ("StartingAddress", "EndingAddress", "MemoryType")),
-    "Win32_PortResource": ("StartingAddress", "ports", ("StartingAddress", "EndingAddress")),
-    "Win32_DMAChannel": ("DMAChannel", "dma", ("DMAChannel", "ChannelTiming", "TypeCTiming")),
-}
+
+
+class ResourceClass(StrEnum):
+    """The WMI resource classes ``Win32_PnPAllocatedResource`` points at, by their class name."""
+
+    IRQ = "Win32_IRQResource"
+    MEMORY = "Win32_DeviceMemoryAddress"
+    PORT = "Win32_PortResource"
+    DMA = "Win32_DMAChannel"
+
+
+class _ResourceKind(NamedTuple):
+    """How one resource class is read: the key a range is named by, the name a device's
+    ``resources`` lists it under, and the properties kept per range."""
+
+    key: str
+    listed_as: str
+    kept: tuple[str, ...]
+
+
+_RESOURCES: Final[Mapping[ResourceClass, _ResourceKind]] = MappingProxyType(
+    {
+        ResourceClass.IRQ: _ResourceKind(
+            "IRQNumber", "irqs", ("IRQNumber", "TriggerType", "TriggerLevel", "Shareable")
+        ),
+        ResourceClass.MEMORY: _ResourceKind(
+            "StartingAddress", "memory", ("StartingAddress", "EndingAddress", "MemoryType")
+        ),
+        ResourceClass.PORT: _ResourceKind("StartingAddress", "ports", ("StartingAddress", "EndingAddress")),
+        ResourceClass.DMA: _ResourceKind("DMAChannel", "dma", ("DMAChannel", "ChannelTiming", "TypeCTiming")),
+    }
+)
+
+
+def _resource_class(class_name: str) -> ResourceClass | None:
+    """The resource class a WMI reference names; None for a class this section does not list."""
+    try:
+        return ResourceClass(class_name)
+    except ValueError:
+        return None
 
 
 def _rows(src: WindowsSources, class_name: str) -> list[JsonObject]:
@@ -105,38 +146,49 @@ def _links(src: WindowsSources, class_name: str) -> dict[str, list[WmiReference]
     return dict(found)
 
 
-def _canonical(class_name: str, value: object) -> str:
+def _canonical(resource: ResourceClass, value: object) -> str:
     """The key a resource is joined on; an IRQ the same however WMI wrote its number."""
-    if class_name == "Win32_IRQResource":
+    if resource == ResourceClass.IRQ:
         return str(irq_number(value))
     return str(value)
 
 
-def _index(build: Callable[[], dict[str, list[WmiReference]]]) -> tuple[dict[str, list[WmiReference]], JsonValue]:
+class _Links(NamedTuple):
+    """An association class read once: each device's antecedents, or why it could not be read."""
+
+    by_device: Mapping[str, list[WmiReference]]
+    error: JsonValue
+
+
+def _index(build: Callable[[], dict[str, list[WmiReference]]]) -> _Links:
     try:
-        return build(), None
+        return _Links(by_device=build(), error=None)
     except ANSWER_ERRORS as exc:
-        return {}, {"error": f"{type(exc).__name__}: {exc}"}
+        return _Links(by_device={}, error={"error": f"{type(exc).__name__}: {exc}"})
 
 
 class _Tables:
     """The system-wide answers every device is joined against, each asked once, or why not."""
 
     def __init__(self, src: WindowsSources) -> None:
-        self.allocations, self.allocations_error = _index(lambda: _links(src, "Win32_PnPAllocatedResource"))
-        self.buses, self.buses_error = _index(lambda: _links(src, "Win32_DeviceBus"))
-        self.answers: dict[str, JsonValue] = {c: guarded(lambda c=c: _json_rows(src, c)) for c in _RESOURCES}
-        self.ranges: dict[str, dict[str, JsonObject]] = {c: self._by_key(c) for c in _RESOURCES}
+        self.allocations = _index(lambda: _links(src, "Win32_PnPAllocatedResource"))
+        self.buses = _index(lambda: _links(src, "Win32_DeviceBus"))
+        self.answers: Mapping[ResourceClass, JsonValue] = MappingProxyType(
+            {c: guarded(lambda c=c: _json_rows(src, c)) for c in ResourceClass}
+        )
+        self.ranges: Mapping[ResourceClass, Mapping[str, JsonObject]] = MappingProxyType(
+            {c: self._by_key(c) for c in ResourceClass}
+        )
 
-    def _by_key(self, class_name: str) -> dict[str, JsonObject]:
-        answer = self.answers[class_name]
-        key = _RESOURCES[class_name][0]
+    def _by_key(self, resource: ResourceClass) -> dict[str, JsonObject]:
+        answer = self.answers[resource]
+        key = _RESOURCES[resource].key
         rows = answer if isinstance(answer, list) else []
-        return {_canonical(class_name, r.get(key)): r for r in rows if isinstance(r, dict)}
+        return {_canonical(resource, r.get(key)): r for r in rows if isinstance(r, dict)}
 
     def join_errors(self) -> JsonObject:
         """Why a join could not be made, by the association that was refused (None where it was read)."""
-        return {"Win32_PnPAllocatedResource": self.allocations_error, "Win32_DeviceBus": self.buses_error}
+        return {"Win32_PnPAllocatedResource": self.allocations.error, "Win32_DeviceBus": self.buses.error}
 
 
 def _subkeys(src: WindowsSources, key: str) -> JsonValue:
@@ -180,19 +232,21 @@ def _strings(value: JsonValue) -> list[str]:
 
 def _resources(tables: _Tables, refs: list[WmiReference]) -> JsonObject:
     """The ranges allocated to a device, by kind, each with the properties that describe it."""
-    out: dict[str, list[JsonValue]] = {name: [] for _, name, _ in _RESOURCES.values()}
+    out: dict[str, list[JsonValue]] = {kind.listed_as: [] for kind in _RESOURCES.values()}
     for ref in refs:
-        if ref.class_name not in _RESOURCES:
+        resource = _resource_class(ref.class_name)
+        if resource is None:
             continue
-        key, name, kept = _RESOURCES[ref.class_name]
-        row = tables.ranges[ref.class_name].get(_canonical(ref.class_name, ref.key(key)), {key: ref.key(key)})
-        out[name].append({k: row.get(k) for k in kept})
+        kind = _RESOURCES[resource]
+        named = ref.key(kind.key)
+        row = tables.ranges[resource].get(_canonical(resource, named), {kind.key: named})
+        out[kind.listed_as].append({k: row.get(k) for k in kind.kept})
     found: JsonObject = dict(out)
     return found
 
 
 def _irq_numbers(refs: list[WmiReference]) -> list[int]:
-    found = (irq_number(r.key("IRQNumber")) for r in refs if r.class_name == "Win32_IRQResource")
+    found = (irq_number(r.key("IRQNumber")) for r in refs if _resource_class(r.class_name) == ResourceClass.IRQ)
     return sorted(n for n in found if n is not None)
 
 
@@ -211,7 +265,7 @@ def _interrupts(src: WindowsSources, instance_id: str, *, refs: list[WmiReferenc
 
 
 def _bus(tables: _Tables, instance_id: str) -> JsonValue:
-    found = [b for r in tables.buses.get(instance_id.upper(), []) if (b := r.key("DeviceID")) is not None]
+    found = [b for r in tables.buses.by_device.get(instance_id.upper(), []) if (b := r.key("DeviceID")) is not None]
     return found[0] if found else None
 
 
@@ -235,7 +289,7 @@ def _identity(registry: JsonObject, instance_id: str) -> JsonObject:
 def _device(src: WindowsSources, tables: _Tables, present: dict[str, JsonObject], instance_id: str) -> JsonObject:
     registry = values(src, rf"{_ENUM}\{instance_id}")
     props = _properties(src, instance_id)
-    refs = tables.allocations.get(instance_id.upper(), [])
+    refs = tables.allocations.by_device.get(instance_id.upper(), [])
     location = _location(registry, props)
     return {
         "instance_id": instance_id,
@@ -275,13 +329,13 @@ def read_windows_pci(src: WindowsSources) -> JsonValue:
     return {
         "devices": [guarded(lambda i=inst: _device(src, tables, present, i)) for inst in _instances(src)],
         "buses": guarded(lambda: _json_rows(src, "Win32_Bus")),
-        "irq_descriptors": tables.answers["Win32_IRQResource"],
-        "ioports": tables.answers["Win32_PortResource"],
-        "iomem": tables.answers["Win32_DeviceMemoryAddress"],
-        "dma": tables.answers["Win32_DMAChannel"],
+        "irq_descriptors": tables.answers[ResourceClass.IRQ],
+        "ioports": tables.answers[ResourceClass.PORT],
+        "iomem": tables.answers[ResourceClass.MEMORY],
+        "dma": tables.answers[ResourceClass.DMA],
         "present_error": answer if refused else None,
         "join_errors": tables.join_errors(),
     }
 
 
-__all__ = ["read_windows_pci"]
+__all__ = ["ResourceClass", "read_windows_pci"]

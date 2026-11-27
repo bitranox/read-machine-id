@@ -24,11 +24,12 @@ from fingerprint_machine import __init__conf__
 
 from ....adapters.cpuid import CpuidOff
 from ....application.collect import Section, collect, default_sections
-from ....application.readings import check, compare_files, load_reading, save_json
+from ....application.readings import ComparisonResult, check, compare_files, load_reading, save_json
 from ....domain.machine_errors import NotAReadingError, UnsupportedPlatformError
 from ..constants import CLICK_CONTEXT_SETTINGS
 from ..context import get_cli_context
 from ..machine_output import (
+    MachineCommand,
     MachineExit,
     OutputMode,
     emit_failure,
@@ -42,7 +43,6 @@ from ..typed_click import argument, option
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ....domain.compare import Comparison
     from ....domain.json_types import JsonObject
 
 #: The failures a machine command reports as a refusal (exit 2) instead of a crash.
@@ -87,24 +87,24 @@ def _read_machine(ctx: click.Context, label: str | None, sections: tuple[str, ..
 def _finish_comparison(
     ctx: click.Context,
     mode: OutputMode,
-    command: str,
-    result: tuple[Comparison, JsonObject],
+    command: MachineCommand,
+    result: ComparisonResult,
     *,
     diff_only: bool,
     out: Path | None,
 ) -> None:
-    cmp, document = result
     if out is not None:
-        save_json(out, document)
-    emit_success(mode, command, document, skipped=[], human=render_comparison(cmp, document, diff_only=diff_only))
-    ctx.exit(int(MachineExit.DIFFERENT if cmp.differences() else MachineExit.DONE))
+        save_json(out, result.document)
+    human = render_comparison(result.comparison, result.document, diff_only=diff_only)
+    emit_success(mode, command, result.document, skipped=[], human=human)
+    ctx.exit(int(MachineExit.DIFFERENT if result.comparison.differences() else MachineExit.DONE))
 
 
 _OUT = click.Path(dir_okay=False, writable=True, readable=False, path_type=Path)
 _IN = click.Path(exists=False, dir_okay=False, path_type=Path)
 
 
-@click.command("collect", context_settings=CLICK_CONTEXT_SETTINGS)
+@click.command(MachineCommand.COLLECT.value, context_settings=CLICK_CONTEXT_SETTINGS)
 @option(
     "--section",
     "sections",
@@ -155,12 +155,12 @@ def cli_collect(
         if out is not None:
             save_json(out, reading)
     except _REFUSALS as exc:
-        emit_failure(mode, "collect", exc)
+        emit_failure(mode, MachineCommand.COLLECT, exc)
         ctx.exit(int(MachineExit.ERROR))
-    emit_success(mode, "collect", reading, skipped=skipped_answers(reading), human=render_reading(reading))
+    emit_success(mode, MachineCommand.COLLECT, reading, skipped=skipped_answers(reading), human=render_reading(reading))
 
 
-@click.command("compare", context_settings=CLICK_CONTEXT_SETTINGS)
+@click.command(MachineCommand.COMPARE.value, context_settings=CLICK_CONTEXT_SETTINGS)
 @argument("original", type=_IN)
 @argument("actual", type=_IN)
 @option("--diff-only", is_flag=True, help="Show only the fields that differ.")
@@ -191,13 +191,13 @@ def cli_compare(
     mode = _mode(as_json, bare)
     try:
         result = compare_files(original, actual)
-        _finish_comparison(ctx, mode, "compare", result, diff_only=diff_only, out=out)
+        _finish_comparison(ctx, mode, MachineCommand.COMPARE, result, diff_only=diff_only, out=out)
     except _REFUSALS as exc:
-        emit_failure(mode, "compare", exc)
+        emit_failure(mode, MachineCommand.COMPARE, exc)
         ctx.exit(int(MachineExit.ERROR))
 
 
-@click.command("check", context_settings=CLICK_CONTEXT_SETTINGS)
+@click.command(MachineCommand.CHECK.value, context_settings=CLICK_CONTEXT_SETTINGS)
 @argument("baseline", type=_IN)
 @option("--diff-only", is_flag=True, help="Show only the fields that differ.")
 @option("--save", type=_OUT, default=None, help="Also save this machine's fresh reading to this file.")
@@ -238,9 +238,9 @@ def cli_check(
         fresh = _read_machine(ctx, None, (), cpuid=True)
         if save is not None:
             save_json(save, fresh)
-        _finish_comparison(ctx, mode, "check", check(base, fresh), diff_only=diff_only, out=out)
+        _finish_comparison(ctx, mode, MachineCommand.CHECK, check(base, fresh), diff_only=diff_only, out=out)
     except _REFUSALS as exc:
-        emit_failure(mode, "check", exc)
+        emit_failure(mode, MachineCommand.CHECK, exc)
         ctx.exit(int(MachineExit.ERROR))
 
 

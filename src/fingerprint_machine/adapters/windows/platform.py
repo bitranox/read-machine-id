@@ -18,7 +18,7 @@ from pwshpy import PwshPyError, ps
 
 from ...domain.cim_method import CimMethodAnswer
 from ...domain.machine_errors import SourceError
-from ...domain.smbios import split_raw_smbios
+from ...domain.smbios import RawSmbios, split_raw_smbios
 from . import devnode, firmware, kernel
 
 if TYPE_CHECKING:
@@ -107,7 +107,7 @@ class PwshpyPlatformSource:
             )
         return out
 
-    def smbios_table(self) -> tuple[bytes, str]:
+    def smbios_table(self) -> RawSmbios:
         """Return the SMBIOS structure table and version from the firmware's RSMB block."""
         try:
             return split_raw_smbios(firmware.firmware_table(firmware.RSMB, 0))
