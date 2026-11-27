@@ -29,6 +29,7 @@ from .summary_model import (
 from .summary_shared import cpuid_cpu, smbios_memory, smbios_system
 from .summary_values import (
     canonical_disk_id,
+    canonical_dsn,
     canonical_mac,
     canonical_uuid,
     first,
@@ -90,7 +91,9 @@ def _cpu(body: JsonObject) -> CpuSummary:
         name=text(head.get("model_name")),
         sockets=len({p for p, _ in topology}) or None,
         cores=len(set(topology)) or None,
-        logical_processors=len(cpuinfo) or None,
+        # Counted from the same sysfs list as the cores: inside a container /proc/cpuinfo can
+        # show only the CPUs it may use, which would give fewer threads than cores.
+        logical_processors=len(topology) or len(cpuinfo) or None,
     )
     return fill_missing(cpuid_cpu(body, counts=procfs), procfs)
 
@@ -117,7 +120,7 @@ def _nic(record: JsonObject, slots: dict[str, int | None]) -> NicSummary:
         name=text(record.get("name")),
         mac=canonical_mac(record.get("permanent_address")) or canonical_mac(obj(record, "sysfs").get("address")),
         interface_index=integer(record.get("index")),
-        pci_serial=text(pci.get("device_serial_number")),
+        pci_serial=canonical_dsn(pci.get("device_serial_number")),
         pci_address=address,
         driver=text(obj(record, "driver").get("driver")) or text(pci.get("driver")),
         bus=bus,
@@ -139,7 +142,7 @@ def _sas_wwid(row: JsonObject, dsn: str | None) -> str | None:
 
 
 def _controller(row: JsonObject) -> ScsiControllerSummary:
-    dsn = text(row.get("device_serial_number"))
+    dsn = canonical_dsn(row.get("device_serial_number"))
     return ScsiControllerSummary(
         pci_serial=dsn,
         pci_address=text(row.get("address")),
@@ -169,7 +172,8 @@ def _disk(record: JsonObject) -> DiskSummary:
         size=integer(record.get("size_bytes")),
         mbr_signature=signature,
         gpt_guid=guid,
-        unique_id=canonical_disk_id(device.get("wwid")),
+        # An NVMe namespace has its own wwid; a SCSI disk's is on its device.
+        unique_id=canonical_disk_id(record.get("wwid")) or canonical_disk_id(device.get("wwid")),
         controller=text(record.get("controller")),
     )
 

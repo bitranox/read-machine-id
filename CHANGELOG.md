@@ -111,7 +111,7 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 - `summary` values are written in one form on both OSes: a NIC `mac` in lower case with colons
   (`00:50:56:00:00:01`, was `005056000001`); `pci_serial` as the PCI Device Serial Number in the
   `lspci` form (`00-0c-29-ff-ff-00-00-01`, was the raw PnP instance id part), or empty when the
-  device has none; the system UUID and a disk's GPT GUID in upper case without braces; a disk's
+  device has none or reports all zeros; the system UUID and a disk's GPT GUID in upper case without braces; a disk's
   `unique_id` with its `naa.` or `eui.` prefix in lower case, as Linux writes it. The CPU name and
   `processor_id` come from CPUID first. `cpu.sockets`, `cores` and `logical_processors` are empty
   instead of 0 when the reading cannot tell them.

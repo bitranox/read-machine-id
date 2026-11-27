@@ -12,6 +12,7 @@ Contents:
     * :func:`canonical_mac` - a MAC address, lower case, colon-separated.
     * :func:`canonical_uuid` - a UUID or GUID, upper case, without braces.
     * :func:`canonical_disk_id` - a disk's VPD 0x83 identifier as Linux writes it (``naa.``/``eui.``).
+    * :func:`canonical_dsn` - a Device Serial Number in the lspci form; an all-zero one is none.
     * :func:`dsn_from_instance` - the Device Serial Number in a Windows PnP instance id, lspci form.
     * :func:`pci_address` - a PCI address from segment, bus, device and function numbers.
     * :func:`split_pci_address` - bus, device and function of a ``dddd:bb:dd.f`` address.
@@ -148,8 +149,8 @@ def canonical_uuid(value: JsonValue) -> str | None:
     """Return a UUID or GUID in upper case without braces, as SMBIOS decoders write it.
 
     Example:
-        >>> canonical_uuid("acda9b46-caae-a71b-a527-d8bbc1d07065"), canonical_uuid("{aaaa-01}")
-        ('ACDA9B46-CAAE-A71B-A527-D8BBC1D07065', 'AAAA-01')
+        >>> canonical_uuid("04030201-0605-0807-090a-0b0c0d0e0f10"), canonical_uuid("{aaaa-01}")
+        ('04030201-0605-0807-090A-0B0C0D0E0F10', 'AAAA-01')
     """
     raw = text(value)
     return raw.strip("{}").upper() if raw is not None else None
@@ -180,6 +181,25 @@ def canonical_disk_id(value: JsonValue, *, id_format: int | None = None) -> str 
     return raw
 
 
+def canonical_dsn(value: JsonValue) -> str | None:
+    """Return a Device Serial Number in the lspci form, or None for an all-zero one.
+
+    Some devices carry the Device Serial Number capability with every byte zero; that names no
+    device, so the summary treats it as no serial (the ``pci`` section keeps it as read).
+
+    Example:
+        >>> canonical_dsn("00-0C-29-FF-FF-00-00-01"), canonical_dsn("00-00-00-00-00-00-00-00")
+        ('00-0c-29-ff-ff-00-00-01', None)
+    """
+    raw = text(value)
+    if raw is None:
+        return None
+    digits = raw.replace("-", "")
+    if not _HEX.fullmatch(digits) or int(digits, 16) == 0:
+        return None
+    return serial_number_text(int(digits, 16))
+
+
 def dsn_from_instance(pnp_id: JsonValue) -> str | None:
     r"""Return the Device Serial Number a Windows PnP instance id carries, in the lspci form.
 
@@ -193,7 +213,7 @@ def dsn_from_instance(pnp_id: JsonValue) -> str | None:
     if raw is None or "\\" not in raw:
         return None
     match = _INSTANCE_DSN.fullmatch(raw.rsplit("\\", 1)[1])
-    return serial_number_text(int(match.group(1), 16)) if match else None
+    return canonical_dsn(match.group(1)) if match else None
 
 
 def pci_address(*, segment: int, bus: int | None, device: int | None, function: int | None) -> str | None:
@@ -263,6 +283,7 @@ def processor_id(raw_cpuid: JsonValue) -> str | None:
 
 __all__ = [
     "canonical_disk_id",
+    "canonical_dsn",
     "canonical_mac",
     "canonical_uuid",
     "dsn_from_instance",

@@ -25,11 +25,11 @@ def test_a_nic_whose_permanent_address_reads_zero_takes_the_interface_address() 
 
 @pytest.mark.os_agnostic
 def test_the_dmi_fallback_writes_the_uuid_as_smbios_does_and_smbios_wins_over_it() -> None:
-    dmi: JsonObject = {"product_uuid": "acda9b46-caae-a71b-a527-d8bbc1d07065", "sys_vendor": "Vendor From DMI"}
+    dmi: JsonObject = {"product_uuid": "04030201-0605-0807-090a-0b0c0d0e0f10", "sys_vendor": "Vendor From DMI"}
     fallback = summarize_linux({"smbios": {"dmi_id": dmi}}).system
-    assert (fallback.uuid, fallback.manufacturer) == ("ACDA9B46-CAAE-A71B-A527-D8BBC1D07065", "Vendor From DMI")
+    assert (fallback.uuid, fallback.manufacturer) == ("04030201-0605-0807-090A-0B0C0D0E0F10", "Vendor From DMI")
     both = summarize_linux({"smbios": {"dmi_id": dmi, "system": {"manufacturer": "Vendor From Table"}}}).system
-    assert (both.manufacturer, both.uuid) == ("Vendor From Table", "ACDA9B46-CAAE-A71B-A527-D8BBC1D07065")
+    assert (both.manufacturer, both.uuid) == ("Vendor From Table", "04030201-0605-0807-090A-0B0C0D0E0F10")
 
 
 @pytest.mark.os_agnostic
@@ -66,3 +66,38 @@ def test_linux_counts_sockets_and_cores_from_the_sysfs_topology() -> None:
     body: JsonObject = {"cpu": {"cpus": cpus, "cpuinfo": cpuinfo}}
     cpu = summarize_linux(body).cpu
     assert (cpu.sockets, cpu.cores, cpu.logical_processors) == (2, 3, 4)
+
+
+@pytest.mark.os_agnostic
+def test_logical_processors_follow_the_topology_when_cpuinfo_shows_fewer() -> None:
+    # A container's /proc/cpuinfo can list only the CPUs it may use; sysfs still lists them all.
+    cpus: list[JsonValue] = [{"topology": {"physical_package_id": "0", "core_id": str(n // 2)}} for n in range(8)]
+    cpuinfo: list[JsonValue] = [{}, {}]
+    body: JsonObject = {"cpu": {"cpus": cpus, "cpuinfo": cpuinfo}}
+    cpu = summarize_linux(body).cpu
+    assert (cpu.sockets, cpu.cores, cpu.logical_processors) == (1, 4, 8)
+
+
+@pytest.mark.os_agnostic
+def test_an_nvme_namespace_gives_its_own_identifier() -> None:
+    disk: JsonObject = {
+        "name": "nvme0n1",
+        "device_path": "../devices/pci0000:00/0000:00:1a.0/0000:04:00.0/nvme/nvme0/nvme0n1",
+        "wwid": "eui.00a0b0c0d0e0f001",
+        "device": {"model": "Example NVMe", "serial": "NV-0001"},
+    }
+    (summary_disk,) = summarize_linux({"disks": {"block_devices": [disk]}}).disks
+    assert (summary_disk.unique_id, summary_disk.serial) == ("eui.00a0b0c0d0e0f001", "NV-0001")
+
+
+@pytest.mark.os_agnostic
+def test_an_all_zero_device_serial_number_is_no_serial_on_both_oses() -> None:
+    linux_body: JsonObject = {
+        "disks": {"controllers": [{"address": "0000:04:00.0", "device_serial_number": "00-00-00-00-00-00-00-00"}]}
+    }
+    windows_body: JsonObject = {
+        "hardware": {"scsi_controllers": [{"PNPDeviceID": "PCI\\VEN_1BB1&DEV_5018\\000000000000000000"}]}
+    }
+    (linux,) = summarize_linux(linux_body).scsi_controllers
+    (windows,) = summarize_windows(windows_body).scsi_controllers
+    assert (linux.pci_serial, windows.pci_serial) == (None, None)
