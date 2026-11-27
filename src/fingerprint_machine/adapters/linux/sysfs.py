@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, TypeVar
 
 from ...application.machine_ports import DEFAULT_MAX_BYTES
 from ...domain.machine_errors import MissingPathError, NeedsRootError, SourceError
+from .tpm import TPM_DEVICE, device_transport, read_nv_index
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -75,6 +76,15 @@ class FilesystemReader:
         """Return a text file's content, UTF-8 decoded with undecodable bytes replaced."""
         return self.read_bytes(path, max_bytes=max_bytes).decode("utf-8", errors="replace")
 
+    def read_prefix(self, path: str, *, size: int) -> bytes:
+        """Return at most the first ``size`` bytes of a file or device (a LUKS header on a disk)."""
+
+        def read(local: Path) -> bytes:
+            with local.open("rb") as handle:
+                return handle.read(size)
+
+        return self._call(path, read)
+
     def list_dir(self, path: str) -> list[str]:
         """Return the names in a directory, sorted."""
         return self._call(path, lambda local: sorted(entry.name for entry in local.iterdir()))
@@ -95,7 +105,7 @@ def _not_yet(what: str) -> SourceError:
 
 
 class SysfsLinuxSource(FilesystemReader):
-    """The real machine's files under ``/``; ethtool, netlink and the TPM come in a later version."""
+    """The real machine's files under ``/`` and its TPM; ethtool and netlink come in a later version."""
 
     def __init__(self, root: Path | None = None) -> None:
         """Read the machine this runs on (``root`` exists for tests)."""
@@ -111,8 +121,9 @@ class SysfsLinuxSource(FilesystemReader):
         raise _not_yet(f"netlink {table.value}")
 
     def tpm_nv_read(self, index: int) -> bytes:
-        """Refuse: the TPM NV read is not wired yet."""
-        raise _not_yet(f"tpm nv index 0x{index:08x}")
+        """Return the content of a TPM NV index, read through the resource manager device."""
+        with device_transport(self._local(TPM_DEVICE)) as transmit:
+            return read_nv_index(transmit, index)
 
 
 __all__ = ["FilesystemReader", "SysfsLinuxSource"]

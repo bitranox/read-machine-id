@@ -19,6 +19,27 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 - `collect --no-cpuid` leaves the `cpuid` section out and never maps the executable page CPUID
   needs.
 - `meta.os` records `windows` or `linux`.
+- Linux `smbios`: the raw DMI table decoded as on Windows (same `smbios.system` shape) with the
+  version from its entry point, both read as root; `dmi_id` holds every `/sys/class/dmi/id`
+  attribute, readable unprivileged except the serials and the UUID.
+- Linux `acpi`: the header of every table under `/sys/firmware/acpi/tables` (runtime-loaded ones
+  under `dynamic/` too), read as root; MSDM only as present with the key masked to its last five.
+- Linux `platform`: kernel release, version and command line, os-release, hostname, machine id
+  (systemd and D-Bus), boot id, DMI modalias, container type, `/sys/hypervisor`, the clock source,
+  and a `virtualization` verdict like `systemd-detect-virt`'s, decided from CPUID and DMI without
+  running anything (with `--no-cpuid` from DMI alone).
+- Linux `cpu`: `/proc/cpuinfo` per logical CPU (flags and bugs as lists), each CPU's topology,
+  caches and frequency limits, the system CPU masks and SMT state, every vulnerability verdict.
+- Linux `memory`: `/proc/meminfo` in bytes, memory blocks, NUMA nodes, huge page pools and the
+  transparent huge page mode.
+- Linux `security`: firmware type and Secure Boot under the Windows key names, shim MOK state, the
+  TPM and its EK certificates (read from the TPM through `/dev/tpmrm0` as root, public fields
+  only), kernel lockdown, LSMs, SELinux, AppArmor profile counts per mode, IMA, device-mapper
+  volumes (dm-crypt with the LUKS version, cipher and UUID read as root, never a key slot; LVM),
+  and the loaded netfilter modules.
+- Linux `services`: the guest agents (open-vm-tools, qemu-guest-agent, Hyper-V daemons, waagent,
+  cloud-init, spice, VirtualBox, Xen, Google and Amazon agents) installed, enabled and running,
+  and cloud-init's instance id.
 
 ### Changed
 

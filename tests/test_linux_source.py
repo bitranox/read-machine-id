@@ -94,8 +94,6 @@ def test_the_real_source_has_no_kernel_interfaces_yet() -> None:
         source.ethtool("eth0", request=bytes(8))
     with pytest.raises(SourceError, match="not implemented"):
         source.netlink_dump(NetlinkDump.LINKS)
-    with pytest.raises(SourceError, match="not implemented"):
-        source.tpm_nv_read(0x01C00002)
 
 
 @pytest.mark.os_agnostic

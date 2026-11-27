@@ -152,6 +152,14 @@ class LinuxSource(Protocol):
         """
         ...
 
+    def read_prefix(self, path: str, *, size: int) -> bytes:
+        """Return at most the first ``size`` bytes of a file or a block device (a disk's LUKS header).
+
+        Raises:
+            NeedsRootError, MissingPathError, SourceError: as :meth:`read_bytes`.
+        """
+        ...
+
     def list_dir(self, path: str) -> list[str]:
         """Return the names in a directory, sorted.
 

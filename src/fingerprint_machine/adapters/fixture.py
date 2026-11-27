@@ -30,6 +30,9 @@ A recorded Linux machine is a directory that mirrors ``/`` (``sys/``, ``proc/``,
       "tpm_nv":  {"0x<index, 8 hex digits>": "<content hex>"}
     }
 
+A TPM NV index the ``tpm_nv`` block lacks answers as a TPM answers an index it does not define
+(:class:`TpmResponseError` ``0x18b``).
+
 Contents:
     * :class:`FixtureSources` - :class:`PlatformSource`, :class:`RegistrySource` and
       :class:`CpuidSource` from a document.
@@ -45,6 +48,7 @@ from typing import TYPE_CHECKING, cast
 
 from ..domain.cpuid import CpuidQuery, CpuidRegs
 from ..domain.machine_errors import MissingKeyError, NotAReadingError, SourceError
+from ..domain.tpm2 import TpmResponseError
 from .linux.sysfs import FilesystemReader
 
 if TYPE_CHECKING:
@@ -53,6 +57,9 @@ if TYPE_CHECKING:
 
     from ..application.machine_ports import NetlinkDump, RegistryData
     from ..domain.json_types import JsonObject, JsonValue
+
+# What a TPM answers NV_ReadPublic of an index it does not define: TPM_RC_HANDLE on handle 1.
+_TPM_RC_UNDEFINED_INDEX = 0x18B
 
 
 def _obj(value: JsonValue, where: str) -> JsonObject:
@@ -196,10 +203,12 @@ class FixtureLinuxSource(FilesystemReader):
         return [bytes.fromhex(m) for m in messages if isinstance(m, str)]
 
     def tpm_nv_read(self, index: int) -> bytes:
-        """Return the recorded content of one TPM NV index."""
+        """Return the recorded content of one TPM NV index; an unrecorded one is not defined."""
         content = self._tpm_nv.get(f"0x{index:08x}")
+        if content is None:
+            raise TpmResponseError(_TPM_RC_UNDEFINED_INDEX)
         if not isinstance(content, str):
-            raise SourceError(f"tpm nv index 0x{index:08x}: not recorded")
+            raise SourceError(f"tpm nv index 0x{index:08x}: not recorded as hex")
         return bytes.fromhex(content)
 
 

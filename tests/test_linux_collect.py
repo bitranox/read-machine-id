@@ -45,8 +45,12 @@ def _collect(args: list[str], factory: Callable[[], AppServices]) -> JsonObject:
 def test_a_linux_reading_says_linux_and_holds_the_cpuid_section(tmp_path: Path) -> None:
     reading = _obj(_collect([], _guest(tmp_path))["data"])
     meta = _obj(reading["meta"])
-    assert (meta["os"], meta["schema_version"], meta["sections"]) == ("linux", 3, ["cpuid"])
-    assert list(reading) == ["meta", "summary", "cpuid"]
+    assert (meta["os"], meta["schema_version"]) == ("linux", 3)
+    sections = meta["sections"]
+    assert isinstance(sections, list)
+    assert "cpuid" in sections
+    assert "windows" not in sections
+    assert list(reading) == ["meta", "summary", *sections]
     cpuid = _obj(reading["cpuid"])
     assert (cpuid["vendor"], cpuid["hypervisor_vendor"]) == ("GenuineIntel", "KVMKVMKVM")
     assert _obj(cpuid["raw"])["0x00000000:0"] == {
@@ -59,12 +63,12 @@ def test_a_linux_reading_says_linux_and_holds_the_cpuid_section(tmp_path: Path) 
 
 @pytest.mark.os_agnostic
 def test_a_section_linux_does_not_read_yet_is_recorded_as_skipped(tmp_path: Path) -> None:
-    envelope = _collect(["--section", "smbios"], _guest(tmp_path))
+    envelope = _collect(["--section", "windows"], _guest(tmp_path))
     reading = _obj(envelope["data"])
-    assert str(_obj(reading["smbios"])["error"]).startswith("SourceError:")
+    assert str(_obj(reading["windows"])["error"]).startswith("SourceError:")
     skipped = envelope["skipped"]
     assert isinstance(skipped, list)
-    assert [_obj(s)["path"] for s in skipped] == ["smbios"]
+    assert [_obj(s)["path"] for s in skipped] == ["windows"]
 
 
 @pytest.mark.os_agnostic
@@ -73,7 +77,9 @@ def test_a_failing_leaf_is_one_recorded_error_and_the_rest_is_read(tmp_path: Pat
     recorded = _obj(answers["cpuid"])
     recorded["0x80000001:0"] = {"error": "refused by the test"}
     source = FixtureLinuxSource(write_linux_tree(tmp_path), answers)
-    envelope = _collect([], lambda: build_testing(sources=LinuxSources(system=source, cpuid=source)))
+    envelope = _collect(
+        ["--section", "cpuid"], lambda: build_testing(sources=LinuxSources(system=source, cpuid=source))
+    )
     cpuid = _obj(_obj(envelope["data"])["cpuid"])
     assert _obj(_obj(cpuid["raw"])["0x80000001:0"])["error"] == "SourceError: refused by the test"
     assert cpuid["hypervisor_vendor"] == "KVMKVMKVM"

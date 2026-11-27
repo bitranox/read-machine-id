@@ -16,6 +16,12 @@ from typing import TYPE_CHECKING
 from ..domain.machine_errors import SourceError
 from .collect_cpuid import read_cpuid
 from .guard import guarded
+from .linux_cpu import read_linux_cpu
+from .linux_firmware_tables import read_linux_acpi, read_linux_smbios
+from .linux_memory import read_linux_memory
+from .linux_platform import read_linux_platform
+from .linux_security import read_linux_security
+from .linux_services import read_linux_services
 from .sections import Section
 
 if TYPE_CHECKING:
@@ -27,6 +33,13 @@ if TYPE_CHECKING:
 #: The sections of a Linux reading, in document order, each read as one piece.
 LINUX_SECTIONS: Mapping[Section, Callable[[LinuxSources], JsonValue]] = {
     Section.CPUID: read_cpuid,
+    Section.SMBIOS: read_linux_smbios,
+    Section.ACPI: read_linux_acpi,
+    Section.PLATFORM: read_linux_platform,
+    Section.CPU: read_linux_cpu,
+    Section.MEMORY: read_linux_memory,
+    Section.SECURITY: read_linux_security,
+    Section.SERVICES: read_linux_services,
 }
 
 
