@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from read_machine_id.adapters.logging.setup import LoggingConfigModel
+from fingerprint_machine.adapters.logging.setup import LoggingConfigModel
 
 
 @pytest.mark.os_agnostic

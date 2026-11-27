@@ -2,7 +2,7 @@
 
 > The CLI stack uses `rich-click`, which bundles `rich` styling on top of click-style ergonomics.
 
-This guide collects every supported method to install `read_machine_id`, including
+This guide collects every supported method to install `fingerprint_machine`, including
 isolated environments and system package managers. Pick the option that matches your workflow.
 
 
@@ -30,24 +30,24 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ## One-shot run via uvx (no install needed)
 
 ```bash
-uvx read-machine-id@latest --help
+uvx fingerprint-machine@latest --help
 ```
 
 ## Persistent install as CLI tool
 
 ```bash
 # install the CLI tool (isolated environment, added to PATH)
-uv tool install read-machine-id
+uv tool install fingerprint-machine
 
 # upgrade to latest
-uv tool upgrade read-machine-id
+uv tool upgrade fingerprint-machine
 ```
 
 ## Install as project dependency
 
 ```bash
 uv venv && source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
-uv pip install read-machine-id
+uv pip install fingerprint-machine
 ```
 
 ## Verify installation
@@ -55,7 +55,7 @@ uv pip install read-machine-id
 After any install method, confirm the CLI is available:
 
 ```bash
-read-machine-id --version
+fingerprint-machine --version
 ```
 
 ---
@@ -67,9 +67,9 @@ read-machine-id --version
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 # install from PyPI
-pip install read-machine-id
+pip install fingerprint-machine
 # optional install from GitHub
-pip install "git+https://github.com/bitranox/read-machine-id"
+pip install "git+https://github.com/bitranox/fingerprint-machine"
 # optional development install from local
 pip install -e ".[dev]"
 # optional install from local runtime only:
@@ -80,9 +80,9 @@ pip install .
 
 ```bash
 # install from PyPI
-pip install --user read-machine-id
+pip install --user fingerprint-machine
 # optional install from GitHub
-pip install --user "git+https://github.com/bitranox/read-machine-id"
+pip install --user "git+https://github.com/bitranox/fingerprint-machine"
 # optional install from local
 pip install --user .
 ```
@@ -98,45 +98,45 @@ python -m pip install pipx
 # optional install pipx via apt
 sudo apt install pipx
 # install via pipx from PyPI
-pipx install read-machine-id
+pipx install fingerprint-machine
 # optional install via pipx from GitHub
-pipx install "git+https://github.com/bitranox/read-machine-id"
+pipx install "git+https://github.com/bitranox/fingerprint-machine"
 # optional install from local
 pipx install .
-pipx upgrade read-machine-id
+pipx upgrade fingerprint-machine
 # install from Git tag
-pipx install "git+https://github.com/bitranox/read-machine-id@v1.1.0"
+pipx install "git+https://github.com/bitranox/fingerprint-machine@v1.1.0"
 ```
 
 ## From Build Artifacts
 
 ```bash
 python -m build
-pip install dist/read_machine_id-*.whl
-pip install dist/read_machine_id-*.tar.gz   # sdist
+pip install dist/fingerprint_machine-*.whl
+pip install dist/fingerprint_machine-*.tar.gz   # sdist
 ```
 
 ## Poetry or PDM Managed Environments
 
 ```bash
 # Poetry
-poetry add read-machine-id     # as dependency
+poetry add fingerprint-machine     # as dependency
 poetry install                          # for local dev
 
 # PDM
-pdm add read-machine-id
+pdm add fingerprint-machine
 pdm install
 ```
 
 ## Install Directly from Git
 
 ```bash
-pip install "git+https://github.com/bitranox/read-machine-id"
+pip install "git+https://github.com/bitranox/fingerprint-machine"
 ```
 
 ## System Package Managers (Optional Distribution Channels)
 
 - Use [fpm](https://fpm.readthedocs.io/) to repackage the Python wheel into `.deb` or `.rpm` for distribution via `apt` or `yum`/`dnf`.
 
-All methods register both the `read_machine_id` and
-`read-machine-id` commands on your PATH.
+All methods register both the `fingerprint_machine` and
+`fingerprint-machine` commands on your PATH.

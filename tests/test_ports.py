@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pytest
 from lib_layered_config import Config
 
-from read_machine_id.adapters.memory import (
+from fingerprint_machine.adapters.memory import (
     check_logging_config_in_memory,
     get_config_in_memory,
     get_default_config_path_in_memory,
@@ -20,7 +20,7 @@ from read_machine_id.adapters.memory import (
 )
 
 if TYPE_CHECKING:
-    from read_machine_id.application.ports import (
+    from fingerprint_machine.application.ports import (
         CheckLoggingConfig,
         GetConfig,
         GetDefaultConfigPath,
@@ -90,7 +90,7 @@ def test_check_logging_config_in_memory_refuses_nothing(check_logging_config_imp
 @pytest.mark.os_agnostic
 def test_build_production_returns_fully_populated_app_services() -> None:
     """build_production() must return AppServices with all fields populated."""
-    from read_machine_id.composition import AppServices, build_production
+    from fingerprint_machine.composition import AppServices, build_production
 
     services = build_production()
     assert isinstance(services, AppServices)
@@ -101,7 +101,7 @@ def test_build_production_returns_fully_populated_app_services() -> None:
 @pytest.mark.os_agnostic
 def test_build_testing_returns_fully_populated_app_services() -> None:
     """build_testing() must return AppServices with all in-memory implementations."""
-    from read_machine_id.composition import AppServices, build_testing
+    from fingerprint_machine.composition import AppServices, build_testing
 
     services = build_testing()
     assert isinstance(services, AppServices)
@@ -112,7 +112,7 @@ def test_build_testing_returns_fully_populated_app_services() -> None:
 @pytest.mark.os_agnostic
 def test_build_production_services_are_callable() -> None:
     """All services from build_production() must be callable."""
-    from read_machine_id.composition import build_production
+    from fingerprint_machine.composition import build_production
 
     services = build_production()
     for field_name in services.__dataclass_fields__:
@@ -122,7 +122,7 @@ def test_build_production_services_are_callable() -> None:
 @pytest.mark.os_agnostic
 def test_build_testing_services_are_callable() -> None:
     """All services from build_testing() must be callable."""
-    from read_machine_id.composition import build_testing
+    from fingerprint_machine.composition import build_testing
 
     services = build_testing()
     for field_name in services.__dataclass_fields__:

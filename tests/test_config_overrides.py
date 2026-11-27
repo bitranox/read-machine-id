@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from lib_layered_config import Config
 
-from read_machine_id.adapters.config.overrides import (
+from fingerprint_machine.adapters.config.overrides import (
     ConfigOverride,
     apply_overrides,
     coerce_value,

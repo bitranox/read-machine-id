@@ -13,11 +13,11 @@ from typing import TYPE_CHECKING
 import pytest
 from lib_registry import Registry
 
-from read_machine_id.adapters.fixture import FixtureSources
-from read_machine_id.adapters.windows.registry import LibRegistrySource
-from read_machine_id.application.collect import Section, read_section
-from read_machine_id.application.machine_ports import Sources
-from read_machine_id.domain.machine_errors import MissingKeyError
+from fingerprint_machine.adapters.fixture import FixtureSources
+from fingerprint_machine.adapters.windows.registry import LibRegistrySource
+from fingerprint_machine.application.collect import Section, read_section
+from fingerprint_machine.application.machine_ports import Sources
+from fingerprint_machine.domain.machine_errors import MissingKeyError
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 @pytest.fixture
 def scratch_key() -> Iterator[str]:
     """A key of its own under HKCU, deleted afterwards (the fake registry is process-wide)."""
-    key = rf"HKCU\Software\read-machine-id-test-{uuid.uuid4().hex}"
+    key = rf"HKCU\Software\fingerprint-machine-test-{uuid.uuid4().hex}"
     registry = Registry()
     registry.create_key(key, parents=True)
     registry.create_key(key + r"\Child B")
@@ -48,8 +48,8 @@ def test_values_and_subkeys_come_back_typed_and_sorted(scratch_key: str) -> None
 @pytest.mark.os_posix
 @pytest.mark.parametrize("method", ["values", "subkeys"])
 def test_a_missing_key_is_reported_as_missing(method: str) -> None:
-    with pytest.raises(MissingKeyError, match="read-machine-id-missing"):
-        getattr(LibRegistrySource(), method)(r"HKCU\Software\read-machine-id-missing")
+    with pytest.raises(MissingKeyError, match="fingerprint-machine-missing"):
+        getattr(LibRegistrySource(), method)(r"HKCU\Software\fingerprint-machine-missing")
 
 
 @pytest.mark.os_posix

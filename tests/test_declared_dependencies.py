@@ -18,7 +18,7 @@ import pytest
 from toml_files import read_toml
 
 _ROOT = Path(__file__).parent.parent
-_PACKAGE = "read_machine_id"
+_PACKAGE = "fingerprint_machine"
 _SOURCE = _ROOT / "src" / _PACKAGE
 
 

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from read_machine_id.adapters import cli as cli_mod
+from fingerprint_machine.adapters import cli as cli_mod
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping

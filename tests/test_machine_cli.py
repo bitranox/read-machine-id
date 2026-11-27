@@ -10,17 +10,17 @@ import pytest
 from click.testing import CliRunner
 from machine_builder import NIC_GUID, PLANTED_KEY, PVSCSI_WWID, machine_document
 
-from read_machine_id.adapters.cli.root import cli
-from read_machine_id.adapters.fixture import FixtureSources
-from read_machine_id.application.machine_ports import Sources
-from read_machine_id.composition import build_production, build_testing
+from fingerprint_machine.adapters.cli.root import cli
+from fingerprint_machine.adapters.fixture import FixtureSources
+from fingerprint_machine.application.machine_ports import Sources
+from fingerprint_machine.composition import build_production, build_testing
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from read_machine_id.composition import AppServices
-    from read_machine_id.domain.json_types import JsonObject, JsonValue
+    from fingerprint_machine.composition import AppServices
+    from fingerprint_machine.domain.json_types import JsonObject, JsonValue
 
 
 def _replay(document: JsonObject) -> Callable[[], AppServices]:

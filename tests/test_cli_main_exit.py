@@ -16,8 +16,8 @@ import click
 import pytest
 from lib_layered_config import Config
 
-from read_machine_id.adapters.cli.main import main
-from read_machine_id.composition import AppServices, build_testing
+from fingerprint_machine.adapters.cli.main import main
+from fingerprint_machine.composition import AppServices, build_testing
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -113,7 +113,7 @@ def test_a_successful_command_exits_0(capsys: pytest.CaptureFixture[str]) -> Non
     exit_code = main(["info"], services_factory=_services({}))
 
     assert exit_code == 0
-    assert "Info for read-machine-id:" in capsys.readouterr().out
+    assert "Info for fingerprint-machine:" in capsys.readouterr().out
 
 
 @pytest.mark.os_agnostic

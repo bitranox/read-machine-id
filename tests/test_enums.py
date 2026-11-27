@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from read_machine_id.domain.enums import DeployTarget, OutputFormat
+from fingerprint_machine.domain.enums import DeployTarget, OutputFormat
 
 # ======================== OutputFormat ========================
 

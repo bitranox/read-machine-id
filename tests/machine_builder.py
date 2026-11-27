@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.x509.oid import NameOID
 
-from read_machine_id.domain.json_types import JsonObject, JsonValue
+from fingerprint_machine.domain.json_types import JsonObject, JsonValue
 
 #: A product key in the shape Windows uses; planted to prove that no full key is ever printed.
 PLANTED_KEY = "QW3ER-TY4UI-OP5AS-DF6GH-JK7LZ"

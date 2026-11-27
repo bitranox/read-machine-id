@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from read_machine_id.domain.errors import ConfigurationError
+from fingerprint_machine.domain.errors import ConfigurationError
 
 
 @pytest.mark.os_agnostic

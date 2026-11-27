@@ -9,9 +9,9 @@ import lib_log_rich.runtime
 import pytest
 from lib_log_rich.domain import ConsoleTheme
 
-from read_machine_id import __init__conf__
-from read_machine_id.adapters import cli as cli_mod
-from read_machine_id.composition import build_production
+from fingerprint_machine import __init__conf__
+from fingerprint_machine.adapters import cli as cli_mod
+from fingerprint_machine.composition import build_production
 
 if TYPE_CHECKING:
     from collections.abc import Callable

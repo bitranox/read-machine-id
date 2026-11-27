@@ -52,23 +52,23 @@ fallback: it is read only when no `.env` is found in the working directory or on
 
 | Placeholder  | Linux             | macOS / Windows   |
 |--------------|-------------------|-------------------|
-| `{slug}`     | `read-machine-id` | -                 |
+| `{slug}`     | `fingerprint-machine` | -                 |
 | `{vendor}`   | -                 | `bitranox`        |
-| `{app}`      | -                 | `read-machine-id` |
+| `{app}`      | -                 | `fingerprint-machine` |
 | `{hostname}` | System hostname   | System hostname   |
 
 ### Concrete Examples
 
 **Linux:**
-- User config: `~/.config/read-machine-id/config.toml`
-- App config: `/etc/xdg/read-machine-id/config.toml`
-- Host config: `/etc/xdg/read-machine-id/hosts/myserver.toml`
+- User config: `~/.config/fingerprint-machine/config.toml`
+- App config: `/etc/xdg/fingerprint-machine/config.toml`
+- Host config: `/etc/xdg/fingerprint-machine/hosts/myserver.toml`
 
 **macOS:**
-- User config: `~/Library/Application Support/bitranox/read-machine-id/config.toml`
+- User config: `~/Library/Application Support/bitranox/fingerprint-machine/config.toml`
 
 **Windows:**
-- User config: `%APPDATA%\bitranox\read-machine-id\config.toml`
+- User config: `%APPDATA%\bitranox\fingerprint-machine\config.toml`
 
 ---
 
@@ -91,16 +91,16 @@ These options apply to all commands and must be specified **before** the command
 
 ```bash
 # Use a specific profile
-read-machine-id --profile production config
+fingerprint-machine --profile production config
 
 # Override settings at runtime (repeatable)
-read-machine-id --set lib_log_rich.console_level=DEBUG config
+fingerprint-machine --set lib_log_rich.console_level=DEBUG config
 
 # Load configuration from an explicit .env file
-read-machine-id --env-file /etc/myapp/.env config
+fingerprint-machine --env-file /etc/myapp/.env config
 
 # Show full traceback for debugging
-read-machine-id --traceback config-deploy --target user
+fingerprint-machine --traceback config-deploy --target user
 ```
 
 ---
@@ -121,19 +121,19 @@ Display the merged configuration from all sources (defaults -> app -> host -> us
 
 ```bash
 # Show merged configuration from all sources
-read-machine-id config
+fingerprint-machine config
 
 # Output as JSON (useful for scripting)
-read-machine-id config --format json
+fingerprint-machine config --format json
 
 # Show specific section only
-read-machine-id config --section lib_log_rich
+fingerprint-machine config --section lib_log_rich
 
 # Load configuration for a specific profile
-read-machine-id config --profile production
+fingerprint-machine config --profile production
 
 # Combine options
-read-machine-id config --profile staging --format json --section lib_log_rich
+fingerprint-machine config --profile staging --format json --section lib_log_rich
 ```
 
 ### Deploy Configuration Files
@@ -156,25 +156,25 @@ Deploy bundled default configuration to platform-specific directories.
 
 ```bash
 # Create user configuration file
-read-machine-id config-deploy --target user
+fingerprint-machine config-deploy --target user
 
 # Deploy to system-wide location (requires privileges)
-sudo read-machine-id config-deploy --target app
+sudo fingerprint-machine config-deploy --target app
 
 # Deploy host-specific configuration
-sudo read-machine-id config-deploy --target host
+sudo fingerprint-machine config-deploy --target host
 
 # Deploy to multiple locations at once
-read-machine-id config-deploy --target user --target host
+fingerprint-machine config-deploy --target user --target host
 
 # Overwrite existing configuration
-read-machine-id config-deploy --target user --force
+fingerprint-machine config-deploy --target user --force
 
 # Deploy to a specific profile directory
-read-machine-id config-deploy --target user --profile production
+fingerprint-machine config-deploy --target user --profile production
 
 # Deploy production profile and overwrite if exists
-read-machine-id config-deploy --target user --profile production --force
+fingerprint-machine config-deploy --target user --profile production --force
 ```
 
 Every target receives `config.toml` plus `config.d/40-layered-config.toml` and
@@ -190,13 +190,13 @@ To deploy user-level configuration for a different user account, use `sudo -u`:
 
 ```bash
 # Deploy user config for 'serviceaccount' user
-sudo -u serviceaccount read-machine-id config-deploy --target user
+sudo -u serviceaccount fingerprint-machine config-deploy --target user
 
 # Deploy with a specific profile
-sudo -u serviceaccount read-machine-id config-deploy --target user --profile production
+sudo -u serviceaccount fingerprint-machine config-deploy --target user --profile production
 
 # The config will be created at that user's home directory:
-# /home/serviceaccount/.config/read-machine-id/config.toml
+# /home/serviceaccount/.config/fingerprint-machine/config.toml
 ```
 
 **Important notes:**
@@ -210,16 +210,16 @@ sudo -u serviceaccount read-machine-id config-deploy --target user --profile pro
 
 ```bash
 # System admin deploying app-wide config (all users)
-sudo read-machine-id config-deploy --target app
+sudo fingerprint-machine config-deploy --target app
 
 # System admin deploying for a service account
-sudo -u myservice read-machine-id config-deploy --target user
+sudo -u myservice fingerprint-machine config-deploy --target user
 
 # System admin deploying host-specific config
-sudo read-machine-id config-deploy --target host
+sudo fingerprint-machine config-deploy --target host
 
 # Regular user deploying their own config (no sudo needed)
-read-machine-id config-deploy --target user
+fingerprint-machine config-deploy --target user
 ```
 
 #### File Permissions (POSIX Only)
@@ -236,19 +236,19 @@ On Linux and macOS, `config-deploy` sets Unix file permissions based on the targ
 
 ```bash
 # Skip permission setting entirely (use system umask)
-read-machine-id config-deploy --target user --no-permissions
+fingerprint-machine config-deploy --target user --no-permissions
 
 # Override directory mode (octal)
-read-machine-id config-deploy --target user --dir-mode 750
+fingerprint-machine config-deploy --target user --dir-mode 750
 
 # Override file mode (octal)
-read-machine-id config-deploy --target user --file-mode 640
+fingerprint-machine config-deploy --target user --file-mode 640
 
 # Both overrides together
-read-machine-id config-deploy --target user --dir-mode 750 --file-mode 640
+fingerprint-machine config-deploy --target user --dir-mode 750 --file-mode 640
 
 # Octal formats: both "750" and "0o750" are accepted
-read-machine-id config-deploy --target user --dir-mode 0o750
+fingerprint-machine config-deploy --target user --dir-mode 0o750
 ```
 
 A mode must be a plain octal literal (`750` or `0o750`; no sign, whitespace, `_` or other base)
@@ -325,13 +325,13 @@ Create example TOML files showing all available options with default values and 
 
 ```bash
 # Generate examples in a specific directory
-read-machine-id config-generate-examples --destination ./examples
+fingerprint-machine config-generate-examples --destination ./examples
 
 # Overwrite existing example files
-read-machine-id config-generate-examples --destination ./examples --force
+fingerprint-machine config-generate-examples --destination ./examples --force
 
 # Generate examples in current directory
-read-machine-id config-generate-examples --destination .
+fingerprint-machine config-generate-examples --destination .
 ```
 
 #### Generated Files
@@ -360,19 +360,19 @@ Use `--set` to override configuration values without modifying files. This optio
 
 ```bash
 # Override a single value
-read-machine-id --set lib_log_rich.console_level=DEBUG config
+fingerprint-machine --set lib_log_rich.console_level=DEBUG config
 
 # Override multiple values
-read-machine-id --set lib_log_rich.console_level=DEBUG --set lib_log_rich.console_format_preset=short config
+fingerprint-machine --set lib_log_rich.console_level=DEBUG --set lib_log_rich.console_format_preset=short config
 
 # Override nested values
-read-machine-id --set lib_log_rich.payload_limits.context_max_keys=30 config
+fingerprint-machine --set lib_log_rich.payload_limits.context_max_keys=30 config
 
 # Override with JSON arrays/objects (use single quotes around the value)
-read-machine-id --set lib_log_rich.console_styles='{"ERROR": "bold red"}' config
+fingerprint-machine --set lib_log_rich.console_styles='{"ERROR": "bold red"}' config
 
 # Combine with profile
-read-machine-id --profile production --set lib_log_rich.console_level=DEBUG config
+fingerprint-machine --profile production --set lib_log_rich.console_level=DEBUG config
 ```
 
 #### Supported Value Types
@@ -423,10 +423,10 @@ Profile names are validated for security and cross-platform compatibility:
 ### Profile Path Examples
 
 **Without profile:**
-- `~/.config/read-machine-id/config.toml`
+- `~/.config/fingerprint-machine/config.toml`
 
 **With profile `production`:**
-- `~/.config/read-machine-id/profile/production/config.toml`
+- `~/.config/fingerprint-machine/profile/production/config.toml`
 
 ### Reading Behavior
 
@@ -455,8 +455,8 @@ Configuration can be overridden via environment variables using two methods:
 For logging configuration, use the native `LOG_*` variables (highest precedence):
 
 ```bash
-LOG_CONSOLE_LEVEL=DEBUG read-machine-id info
-LOG_ENABLE_GRAYLOG=true LOG_GRAYLOG_ENDPOINT="logs.example.com:12201" read-machine-id info
+LOG_CONSOLE_LEVEL=DEBUG fingerprint-machine info
+LOG_ENABLE_GRAYLOG=true LOG_GRAYLOG_ENDPOINT="logs.example.com:12201" fingerprint-machine info
 ```
 
 ### Method 2: Application-Prefixed Variables
@@ -464,7 +464,7 @@ LOG_ENABLE_GRAYLOG=true LOG_GRAYLOG_ENDPOINT="logs.example.com:12201" read-machi
 For any configuration section, use the format: `<PREFIX>___<SECTION>__<KEY>=value`
 
 ```bash
-READ_MACHINE_ID___LIB_LOG_RICH__CONSOLE_LEVEL=DEBUG read-machine-id info
+FINGERPRINT_MACHINE___LIB_LOG_RICH__CONSOLE_LEVEL=DEBUG fingerprint-machine info
 ```
 
 **Separator reference:**
@@ -498,7 +498,7 @@ To load a specific `.env` file instead, use `--env-file`:
 
 ```bash
 # Load from an explicit path (skips upward directory search)
-read-machine-id --env-file /opt/myapp/config/.env config
+fingerprint-machine --env-file /opt/myapp/config/.env config
 ```
 
 The file must exist and be readable; Click validates this before the command runs.
@@ -521,19 +521,19 @@ prefix:
 
 ```bash
 # User-level customization (Linux)
-~/.config/read-machine-id/config.d/999-myconfig.toml
+~/.config/fingerprint-machine/config.d/999-myconfig.toml
 
 # User-level customization (macOS)
-~/Library/Application Support/bitranox/read-machine-id/config.d/999-myconfig.toml
+~/Library/Application Support/bitranox/fingerprint-machine/config.d/999-myconfig.toml
 
 # User-level customization (Windows)
-%APPDATA%\bitranox\read-machine-id\config.d\999-myconfig.toml
+%APPDATA%\bitranox\fingerprint-machine\config.d\999-myconfig.toml
 
 # System-wide customization (Linux)
-/etc/xdg/read-machine-id/config.d/999-myconfig.toml
+/etc/xdg/fingerprint-machine/config.d/999-myconfig.toml
 
 # Host-specific customization (Linux)
-/etc/xdg/read-machine-id/hosts/{hostname}.d/999-myconfig.toml
+/etc/xdg/fingerprint-machine/hosts/{hostname}.d/999-myconfig.toml
 ```
 
 A file placed directly next to `config.toml` (outside `config.d/`) is never read: each layer reads
@@ -563,7 +563,7 @@ This approach keeps your customizations separate and safe from updates while sti
 You can import the configuration system directly in Python:
 
 ```python
-import read_machine_id as btcli
+import fingerprint_machine as btcli
 
 # Get the merged configuration object
 config = btcli.get_config()

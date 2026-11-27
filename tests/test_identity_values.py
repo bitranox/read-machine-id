@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 import pytest
 from machine_builder import PLANTED_KEY, PVSCSI_SERIAL, PVSCSI_WWID, acpi_table, ek_certificate_der, store_blob
 
-from read_machine_id.domain.certificates import der_from_store_blob, describe_certificate
-from read_machine_id.domain.identity import (
+from fingerprint_machine.domain.certificates import der_from_store_blob, describe_certificate
+from fingerprint_machine.domain.identity import (
     WITHHELD,
     decode_acpi_header,
     decode_tbs_device_info,
@@ -22,7 +22,7 @@ from read_machine_id.domain.identity import (
 )
 
 if TYPE_CHECKING:
-    from read_machine_id.domain.json_types import JsonObject
+    from fingerprint_machine.domain.json_types import JsonObject
 
 _PVSCSI = r"PCI\VEN_15AD&DEV_07C0&SUBSYS_07C015AD&REV_02"
 

@@ -11,7 +11,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from read_machine_id.adapters.config.overrides import (
+from fingerprint_machine.adapters.config.overrides import (
     coerce_value,
     parse_override,
 )

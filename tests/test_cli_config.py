@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from read_machine_id.adapters import cli as cli_mod
-from read_machine_id.adapters.config import loader as config_mod
+from fingerprint_machine.adapters import cli as cli_mod
+from fingerprint_machine.adapters.config import loader as config_mod
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping
@@ -313,7 +313,7 @@ def test_when_config_deploy_supports_multiple_targets(
     inject_deploy_configuration: Callable[[Callable[..., list[Path]]], Callable[[], Any]],
 ) -> None:
     """Verify config-deploy accepts multiple --target options."""
-    from read_machine_id.domain.enums import DeployTarget
+    from fingerprint_machine.domain.enums import DeployTarget
 
     path1 = tmp_path / "config1.toml"
     path2 = tmp_path / "config2.toml"
@@ -568,7 +568,7 @@ def test_when_config_generate_examples_is_invoked_it_creates_files(
     ) -> list[Path]:
         return [created_file]
 
-    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
+    monkeypatch.setattr("fingerprint_machine.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -595,7 +595,7 @@ def test_when_config_generate_examples_has_no_files_it_informs_user(
     ) -> list[Path]:
         return []
 
-    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
+    monkeypatch.setattr("fingerprint_machine.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -638,7 +638,7 @@ def test_when_config_generate_examples_with_force_it_passes_force_flag(
         captured_force.append(force)
         return [created_file]
 
-    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
+    monkeypatch.setattr("fingerprint_machine.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -668,7 +668,7 @@ def test_when_config_generate_examples_without_force_it_defaults_to_false(
         captured_force.append(force)
         return [created_file]
 
-    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
+    monkeypatch.setattr("fingerprint_machine.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -694,7 +694,7 @@ def test_when_config_generate_examples_encounters_error_it_exits_with_general_er
     ) -> list[Path]:
         raise OSError("Disk full")
 
-    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
+    monkeypatch.setattr("fingerprint_machine.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -714,7 +714,7 @@ def test_when_config_generate_examples_it_passes_correct_metadata(
     production_factory: Callable[[], Any],
 ) -> None:
     """Verify config-generate-examples passes correct slug, vendor, app from __init__conf__."""
-    from read_machine_id import __init__conf__
+    from fingerprint_machine import __init__conf__
 
     captured_params: list[dict[str, Any]] = []
     created_file = tmp_path / "example.toml"
@@ -726,7 +726,7 @@ def test_when_config_generate_examples_it_passes_correct_metadata(
         captured_params.append({"slug": slug, "vendor": vendor, "app": app, "destination": str(destination)})
         return [created_file]
 
-    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
+    monkeypatch.setattr("fingerprint_machine.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,
@@ -761,7 +761,7 @@ def test_when_config_generate_examples_creates_multiple_files_it_lists_all(
     ) -> list[Path]:
         return [file1, file2]
 
-    monkeypatch.setattr("read_machine_id.adapters.cli.commands.config.generate_examples", mock_generate_examples)
+    monkeypatch.setattr("fingerprint_machine.adapters.cli.commands.config.generate_examples", mock_generate_examples)
 
     result: Result = cli_runner.invoke(
         cli_mod.cli,

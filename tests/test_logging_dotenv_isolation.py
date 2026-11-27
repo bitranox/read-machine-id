@@ -27,8 +27,8 @@ import pytest
 from layer_roots import SYSTEM_LAYER_ROOT_VARIABLES
 from lib_layered_config import Config
 
-from read_machine_id import __init__conf__
-from read_machine_id.adapters.logging.setup import (
+from fingerprint_machine import __init__conf__
+from fingerprint_machine.adapters.logging.setup import (
     InvalidLoggingConfigError,
     check_logging_config,
     init_logging,
@@ -51,7 +51,7 @@ def _run(cwd: Path, *args: str, env: dict[str, str] | None = None) -> subprocess
     clean.update(dict.fromkeys(_HOMES, str(cwd)))
     clean.update(env or {})
     return subprocess.run(  # noqa: S603 - fixed argv: this interpreter running this package
-        [sys.executable, "-m", "read_machine_id", *args],
+        [sys.executable, "-m", "fingerprint_machine", *args],
         cwd=cwd,
         env=clean,
         capture_output=True,
@@ -165,7 +165,7 @@ def test_an_invalid_logging_section_leaves_commands_that_do_not_read_the_config_
     result = _run(tmp_path, "info", env={f"{PREFIX}___LIB_LOG_RICH__RATE_LIMIT": "100:60"})
 
     assert result.returncode == 0, result.stderr
-    assert "Info for read-machine-id:" in result.stdout
+    assert "Info for fingerprint-machine:" in result.stdout
 
 
 @pytest.mark.os_agnostic

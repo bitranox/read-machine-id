@@ -1,16 +1,16 @@
-# read-machine-id
+# fingerprint-machine
 
 <!-- Badges -->
-[![CI](https://github.com/bitranox/read-machine-id/actions/workflows/default_cicd_public.yml/badge.svg)](https://github.com/bitranox/read-machine-id/actions/workflows/default_cicd_public.yml)
-[![CodeQL](https://github.com/bitranox/read-machine-id/actions/workflows/codeql.yml/badge.svg)](https://github.com/bitranox/read-machine-id/actions/workflows/codeql.yml)
+[![CI](https://github.com/bitranox/fingerprint-machine/actions/workflows/default_cicd_public.yml/badge.svg)](https://github.com/bitranox/fingerprint-machine/actions/workflows/default_cicd_public.yml)
+[![CodeQL](https://github.com/bitranox/fingerprint-machine/actions/workflows/codeql.yml/badge.svg)](https://github.com/bitranox/fingerprint-machine/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/read-machine-id.svg)](https://pypi.org/project/read-machine-id/)
-[![PyPI - Downloads](https://img.shields.io/pypi/dm/read-machine-id.svg)](https://pypi.org/project/read-machine-id/)
+[![PyPI](https://img.shields.io/pypi/v/fingerprint-machine.svg)](https://pypi.org/project/fingerprint-machine/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/fingerprint-machine.svg)](https://pypi.org/project/fingerprint-machine/)
 [![Code Style: Ruff](https://img.shields.io/badge/Code%20Style-Ruff-46A3FF?logo=ruff&labelColor=000)](https://docs.astral.sh/ruff/)
-[![codecov](https://codecov.io/gh/bitranox/read-machine-id/graph/badge.svg)](https://codecov.io/gh/bitranox/read-machine-id)
+[![codecov](https://codecov.io/gh/bitranox/fingerprint-machine/graph/badge.svg)](https://codecov.io/gh/bitranox/fingerprint-machine)
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
-`read-machine-id` reads what a Windows machine reports about itself and writes it out as one JSON
+`fingerprint-machine` reads what a Windows machine reports about itself and writes it out as one JSON
 document: the SMBIOS table, every network adapter with its PCI location and driver settings, disk
 and controller serials, every device Windows has seen, the Windows ids and licensing state, and the
 TPM and Secure Boot state. It can also compare two such readings field by field.
@@ -34,13 +34,13 @@ On the Windows machine, with [uv](https://docs.astral.sh/uv/) installed:
 
 ```powershell
 # Read this machine, show a summary, and save the whole reading
-uvx read-machine-id collect --out before.json
+uvx fingerprint-machine collect --out before.json
 
 # Later, or after the move: read again and compare with the saved one
-uvx read-machine-id check before.json --save after.json --diff-only
+uvx fingerprint-machine check before.json --save after.json --diff-only
 
 # Compare two saved readings anywhere, Linux and macOS included
-uvx read-machine-id compare before.json after.json --diff-only
+uvx fingerprint-machine compare before.json after.json --diff-only
 ```
 
 Run it from an elevated prompt if you can. Some sources, BitLocker among them, answer only to an
@@ -54,7 +54,7 @@ reading is not affected.
 ### `collect`
 
 ```text
-read-machine-id collect [--section NAME ...] [--label TEXT] [--out FILE] [--json | --json-bare]
+fingerprint-machine collect [--section NAME ...] [--label TEXT] [--out FILE] [--json | --json-bare]
 ```
 
 Reads the machine. Without options it prints a summary table. `--json` prints the whole reading
@@ -65,7 +65,7 @@ name, e.g. `--section network --section smbios`.
 ### `compare`
 
 ```text
-read-machine-id compare ORIGINAL ACTUAL [--diff-only] [--out FILE] [--json | --json-bare]
+fingerprint-machine compare ORIGINAL ACTUAL [--diff-only] [--out FILE] [--json | --json-bare]
 ```
 
 Compares two saved readings and marks every field as same, different, or present on one side only.
@@ -74,7 +74,7 @@ Exits 1 when anything differs. `--out` saves the comparison.
 ### `check`
 
 ```text
-read-machine-id check BASELINE [--diff-only] [--save FILE] [--out FILE] [--json | --json-bare]
+fingerprint-machine check BASELINE [--diff-only] [--save FILE] [--out FILE] [--json | --json-bare]
 ```
 
 Reads this machine and compares it with a saved baseline in one step. `--save` keeps the fresh
@@ -187,14 +187,14 @@ two readings come from different schema versions, a field only the newer one col
 
 ```bash
 # One-shot run, no install
-uvx read-machine-id@latest --help
+uvx fingerprint-machine@latest --help
 
 # Install as a command line tool (isolated environment, added to PATH)
-uv tool install read-machine-id
-uv tool upgrade read-machine-id
+uv tool install fingerprint-machine
+uv tool upgrade fingerprint-machine
 
 # As a project dependency
-uv pip install read-machine-id
+uv pip install fingerprint-machine
 ```
 
 For pip, pipx and source builds see [INSTALL.md](INSTALL.md).
@@ -212,8 +212,8 @@ The installed package declares only lower bounds (`>=`) for its dependencies, so
 cooldown of your own, or to run the exact tree CI tests:
 
 ```bash
-uv tool install --exclude-newer "7 days" read-machine-id
-git clone https://github.com/bitranox/read-machine-id.git && cd read-machine-id && uv sync --locked && uv run read-machine-id --help
+uv tool install --exclude-newer "7 days" fingerprint-machine
+git clone https://github.com/bitranox/fingerprint-machine.git && cd fingerprint-machine && uv sync --locked && uv run fingerprint-machine --help
 ```
 
 ---
@@ -226,9 +226,9 @@ see [CONFIG.md](CONFIG.md) to change log levels or targets. The `config`, `confi
 `config-generate-examples`, `info`, `logdemo` and `fail` commands belong to this part:
 
 ```bash
-read-machine-id info                          # version and install details
-read-machine-id config                        # the merged configuration
-read-machine-id --set lib_log_rich.console_level=DEBUG collect
+fingerprint-machine info                          # version and install details
+fingerprint-machine config                        # the merged configuration
+fingerprint-machine --set lib_log_rich.console_level=DEBUG collect
 ```
 
 ---

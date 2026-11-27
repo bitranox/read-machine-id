@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from read_machine_id.domain.compare import FieldStatus, compare_readings, score
-from read_machine_id.domain.network import join_adapters
+from fingerprint_machine.domain.compare import FieldStatus, compare_readings, score
+from fingerprint_machine.domain.network import join_adapters
 
 if TYPE_CHECKING:
-    from read_machine_id.domain.json_types import JsonObject, JsonValue
+    from fingerprint_machine.domain.json_types import JsonObject, JsonValue
 
 
 def _statuses(a: JsonObject, b: JsonObject) -> dict[str, FieldStatus]:

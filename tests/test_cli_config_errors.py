@@ -32,9 +32,9 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from lib_layered_config import Config, ConfigError, DeployPermissionsError, PermissionProblem
 
-from read_machine_id import __init__conf__
-from read_machine_id.adapters import cli as cli_mod
-from read_machine_id.composition import AppServices, build_production, build_testing
+from fingerprint_machine import __init__conf__
+from fingerprint_machine.adapters import cli as cli_mod
+from fingerprint_machine.composition import AppServices, build_production, build_testing
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -420,7 +420,7 @@ def _stderr_of(completed: subprocess.CompletedProcess[bytes]) -> str:
 def test_a_real_non_utf8_env_file_does_not_stop_info(tmp_path: Path, non_utf8_env_file: Path) -> None:
     """End to end, in a process of its own, through the real loader."""
     completed = subprocess.run(
-        [sys.executable, "-m", "read_machine_id", "--env-file", "latin1.env", "info"],
+        [sys.executable, "-m", "fingerprint_machine", "--env-file", "latin1.env", "info"],
         capture_output=True,
         check=False,
         cwd=non_utf8_env_file.parent,
@@ -433,7 +433,7 @@ def test_a_real_non_utf8_env_file_does_not_stop_info(tmp_path: Path, non_utf8_en
 @_LINUX_ONLY
 def test_a_real_non_utf8_env_file_refuses_config_with_78(tmp_path: Path, non_utf8_env_file: Path) -> None:
     completed = subprocess.run(
-        [sys.executable, "-m", "read_machine_id", "--env-file", "latin1.env", "config"],
+        [sys.executable, "-m", "fingerprint_machine", "--env-file", "latin1.env", "config"],
         capture_output=True,
         check=False,
         cwd=non_utf8_env_file.parent,
@@ -452,7 +452,7 @@ def test_a_real_non_utf8_env_file_does_not_stop_config_deploy(tmp_path: Path, no
         [
             sys.executable,
             "-m",
-            "read_machine_id",
+            "fingerprint_machine",
             "--env-file",
             "latin1.env",
             "config-deploy",
@@ -473,7 +473,7 @@ def test_a_real_non_utf8_env_file_does_not_stop_config_deploy(tmp_path: Path, no
 def test_a_real_broken_user_config_does_not_stop_info(broken_user_config_env: dict[str, str]) -> None:
     """End to end through the real loader: info does not read the configuration."""
     completed = subprocess.run(
-        [sys.executable, "-m", "read_machine_id", "info"],
+        [sys.executable, "-m", "fingerprint_machine", "info"],
         capture_output=True,
         check=False,
         env=broken_user_config_env,
@@ -487,7 +487,7 @@ def test_a_real_broken_user_config_does_not_stop_info(broken_user_config_env: di
 def test_a_real_broken_user_config_refuses_config_with_78(broken_user_config_env: dict[str, str]) -> None:
     """End to end through the real loader: config reads it, so it refuses and names the file."""
     completed = subprocess.run(
-        [sys.executable, "-m", "read_machine_id", "config"],
+        [sys.executable, "-m", "fingerprint_machine", "config"],
         capture_output=True,
         check=False,
         env=broken_user_config_env,
@@ -513,7 +513,7 @@ def test_a_real_invalid_permission_section_is_replaced_by_a_forced_deploy(tmp_pa
         [
             sys.executable,
             "-m",
-            "read_machine_id",
+            "fingerprint_machine",
             "config-deploy",
             "--target",
             "user",
@@ -533,7 +533,7 @@ def test_a_real_invalid_permission_section_is_replaced_by_a_forced_deploy(tmp_pa
 def test_a_real_invalid_profile_name_stops_info_with_a_usage_error(tmp_path: Path) -> None:
     """End to end through the real loader: an invalid --profile is not silently ignored."""
     completed = subprocess.run(
-        [sys.executable, "-m", "read_machine_id", "--profile", "../x", "info"],
+        [sys.executable, "-m", "fingerprint_machine", "--profile", "../x", "info"],
         capture_output=True,
         check=False,
         env={**os.environ, "XDG_CONFIG_HOME": str(tmp_path)},

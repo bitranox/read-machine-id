@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING
 import pytest
 from machine_builder import SYSTEM_UUID_BYTES, smbios_table, structure
 
-from read_machine_id.domain.smbios import decode_smbios, parse_smbios_structures, split_raw_smbios
+from fingerprint_machine.domain.smbios import decode_smbios, parse_smbios_structures, split_raw_smbios
 
 if TYPE_CHECKING:
-    from read_machine_id.domain.json_types import JsonObject, JsonValue
+    from fingerprint_machine.domain.json_types import JsonObject, JsonValue
 
 
 def _first(rows: JsonValue) -> JsonObject:

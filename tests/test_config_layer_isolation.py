@@ -20,8 +20,8 @@ from pathlib import Path
 import pytest
 from lib_layered_config import deploy_config_paths
 
-from read_machine_id import __init__conf__
-from read_machine_id.adapters.config.loader import get_config, get_default_config_path
+from fingerprint_machine import __init__conf__
+from fingerprint_machine.adapters.config.loader import get_config, get_default_config_path
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 

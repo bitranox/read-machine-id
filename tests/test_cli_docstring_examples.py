@@ -16,7 +16,7 @@ import sys
 import click
 import pytest
 
-from read_machine_id.adapters.cli.root import cli
+from fingerprint_machine.adapters.cli.root import cli
 
 
 def _commands(group: click.Group) -> dict[str, click.Command]:

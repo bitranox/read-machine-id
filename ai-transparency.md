@@ -47,7 +47,7 @@ full key reaches the output. CI runs on Linux, macOS and Windows for every Pytho
 
 You do not have to take any of this on faith.
 
-- The source is available. Read `src/read_machine_id/`; the module-by-module map is in
+- The source is available. Read `src/fingerprint_machine/`; the module-by-module map is in
   [docs/systemdesign/module_reference.md](docs/systemdesign/module_reference.md).
 - The history is available too. Decisions and reversals show up over time.
 - The tests live in `tests/` and the doctests live in the modules. Run `make test` and see.

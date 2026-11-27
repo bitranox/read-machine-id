@@ -19,7 +19,7 @@ REPO = Path(__file__).parent.parent
 
 #: The database a coverage run leaves in the temp directory, and the rollback
 #: journal SQLite keeps beside it while a write is in flight.
-PLANTED = (".coverage.read_machine_id", ".coverage.read_machine_id-journal")
+PLANTED = (".coverage.fingerprint_machine", ".coverage.fingerprint_machine-journal")
 
 
 @pytest.mark.os_agnostic

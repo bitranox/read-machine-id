@@ -45,8 +45,8 @@ import json
 import os
 import sys
 
-from read_machine_id.adapters.cli.main import main
-from read_machine_id.composition import build_production
+from fingerprint_machine.adapters.cli.main import main
+from fingerprint_machine.composition import build_production
 
 argv = ["--set", 'my_service.hosts=["a.test:25"]', "config", "--format", "json", "--section", "my_service"]
 code = main(argv, services_factory=build_production)

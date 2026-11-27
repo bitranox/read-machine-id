@@ -2557,7 +2557,7 @@ wheels = [
 ]
 
 [[package]]
-name = "read-machine-id"
+name = "fingerprint-machine"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

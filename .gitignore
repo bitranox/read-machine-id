@@ -45,7 +45,7 @@ tmp_*
 # __pycache__: compiled .pyc files at any depth
 # *.py[cod]: catches .pyc, .pyo, .pyd
 __pycache__/
-src/read_machine_id/__pycache__/
+src/fingerprint_machine/__pycache__/
 *.py[cod]
 # other compiled artifacts
 *$py.class

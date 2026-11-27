@@ -16,10 +16,10 @@ from typing import TYPE_CHECKING
 import pytest
 from pydantic import ValidationError
 
-from read_machine_id.adapters.logging.setup import (
+from fingerprint_machine.adapters.logging.setup import (
     _build_runtime_config,  # pyright: ignore[reportPrivateUsage]
 )
-from read_machine_id.composition import build_production
+from fingerprint_machine.composition import build_production
 
 if TYPE_CHECKING:
     from pathlib import Path

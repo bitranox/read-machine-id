@@ -1,5 +1,5 @@
 [project]
-name = "read-machine-id"
+name = "fingerprint-machine"
 version = "0.1.0"
 description = "Read a Windows machine's identity (SMBIOS, NICs, serials, TPM, licensing) as JSON and compare readings"
 readme = "README.md"
@@ -59,9 +59,9 @@ os = ["ubuntu-latest", "windows-latest", "macos-latest"]
 free-threaded = [] # none: pwshpy and fake-winreg require orjson, which has no free-threaded build
 
 [project.urls]
-Homepage = "https://github.com/bitranox/read-machine-id"
-Repository = "https://github.com/bitranox/read-machine-id.git"
-Issues = "https://github.com/bitranox/read-machine-id/issues"
+Homepage = "https://github.com/bitranox/fingerprint-machine"
+Repository = "https://github.com/bitranox/fingerprint-machine.git"
+Issues = "https://github.com/bitranox/fingerprint-machine/issues"
 
 [project.optional-dependencies]
 # orjson's fast path on 3.14+ GIL builds; a free-threaded build never imports it.
@@ -112,8 +112,8 @@ dev = [
 ]
 
 [project.scripts]
-read_machine_id = "read_machine_id.entry:main"
-read-machine-id = "read_machine_id.entry:main"
+fingerprint_machine = "fingerprint_machine.entry:main"
+fingerprint-machine = "fingerprint_machine.entry:main"
 
 [build-system]
 requires = ["hatchling>=1.33.0"]
@@ -123,11 +123,11 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/read_machine_id"]
+packages = ["src/fingerprint_machine"]
 include = [
-    "src/read_machine_id/py.typed",
-    "src/read_machine_id/adapters/config/defaultconfig.toml",
-    "src/read_machine_id/adapters/config/defaultconfig.d/*.toml",
+    "src/fingerprint_machine/py.typed",
+    "src/fingerprint_machine/adapters/config/defaultconfig.toml",
+    "src/fingerprint_machine/adapters/config/defaultconfig.d/*.toml",
 ]
 
 # An allowlist, never a denylist: hatchling reads only the root .gitignore, so tracked working
@@ -136,7 +136,7 @@ include = [
 # refuses any other top-level entry.
 [tool.hatch.build.targets.sdist]
 include = [
-    "/src/read_machine_id",
+    "/src/fingerprint_machine",
     "/tests/*.py",
     "/docs",
     "/README.md",
@@ -199,11 +199,11 @@ runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 # body to exercise import-time and cache behaviour, so moving them to module top would defeat intent.
 "tests/*.py" = ["T20", "S101", "S105", "S106", "S108", "FBT001", "FBT003", "PLR0913", "PLR2004", "PLC0415"]
 # CLI: Click framework injects boolean params; commands have many options
-"src/read_machine_id/adapters/cli/**/*.py" = ["FBT001", "FBT002", "PLR0913"]
+"src/fingerprint_machine/adapters/cli/**/*.py" = ["FBT001", "FBT002", "PLR0913"]
 # Protocols/adapters: many-param signatures by design
-"src/read_machine_id/application/*.py" = ["PLR0913"]
-"src/read_machine_id/adapters/config/*.py" = ["PLR0913"]
-"src/read_machine_id/adapters/memory/*.py" = ["PLR0913"]
+"src/fingerprint_machine/application/*.py" = ["PLR0913"]
+"src/fingerprint_machine/adapters/config/*.py" = ["PLR0913"]
+"src/fingerprint_machine/adapters/memory/*.py" = ["PLR0913"]
 
 [tool.pyright]
 typeCheckingMode = "strict"
@@ -237,8 +237,8 @@ parallel = false
 # pytest-cov erases it when a run starts and combines the data files beside it
 # when a run ends. bmk and CI each point COVERAGE_FILE at a directory of their
 # own; set it the same way before running pytest --cov beside another run.
-data_file = "/tmp/.coverage.read_machine_id"
-source = ["src/read_machine_id"]
+data_file = "/tmp/.coverage.fingerprint_machine"
+source = ["src/fingerprint_machine"]
 
 [tool.coverage.report]
 omit = [
@@ -287,18 +287,18 @@ coverage-report-file = "coverage.xml"
 src-path = "src"
 
 [tool.importlinter]
-root_package = "read_machine_id"
+root_package = "fingerprint_machine"
 exclude_type_checking_imports = true
 
 [[tool.importlinter.contracts]]
 name = "Domain is pure (no adapter dependencies)"
 type = "forbidden"
 source_modules = [
-  "read_machine_id.domain",
+  "fingerprint_machine.domain",
 ]
 forbidden_modules = [
-  "read_machine_id.adapters",
-  "read_machine_id.composition",
+  "fingerprint_machine.adapters",
+  "fingerprint_machine.composition",
 ]
 
 [[tool.importlinter.contracts]]
@@ -306,13 +306,13 @@ name = "Clean Architecture layers"
 type = "layers"
 layers = [
   # Composition wires adapters - can import everything
-  "read_machine_id.composition",
+  "fingerprint_machine.composition",
   # Adapters implement ports - can import application and domain
-  "read_machine_id.adapters",
+  "fingerprint_machine.adapters",
   # Application defines ports - can import domain
-  "read_machine_id.application",
+  "fingerprint_machine.application",
   # Domain is pure - bottom layer
-  "read_machine_id.domain",
+  "fingerprint_machine.domain",
 ]
 
 [tool.pip-audit]

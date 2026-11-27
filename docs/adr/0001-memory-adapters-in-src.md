@@ -7,12 +7,12 @@
 Testing the application requires in-memory implementations of adapter
 interfaces (e.g. configuration loaders, logging setup) that avoid real
 I/O. The question is whether these belong under `tests/` or under the
-production source tree in `src/read_machine_id/adapters/memory/`.
+production source tree in `src/fingerprint_machine/adapters/memory/`.
 
 ## Decision
 
 Place in-memory adapter implementations in
-`src/read_machine_id/adapters/memory/` rather than in the test
+`src/fingerprint_machine/adapters/memory/` rather than in the test
 tree.
 
 ## Consequences

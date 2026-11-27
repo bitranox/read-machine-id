@@ -23,7 +23,7 @@ The targets used day to day:
 - `make testintegration` (aliases `testi`, `ti`) -- the integration tests only.
 - `make bump-patch` / `bump-minor` / `bump-major` -- bump the version in `pyproject.toml`, turn
   the `[Unreleased]` section of `CHANGELOG.md` into the new version, and rewrite
-  `src/read_machine_id/__init__conf__.py` to match.
+  `src/fingerprint_machine/__init__conf__.py` to match.
 - `make push` -- run the tests, commit and push. Give the commit message with `MSG="..."` (it
   reaches bmk as `BMK_COMMIT_MESSAGE` and survives punctuation, newlines and `$`); without one,
   bmk prompts.
@@ -61,11 +61,11 @@ These tests are skipped by `make test` and in CI, and run with `make testintegra
 
 - Single source of truth for package metadata is `pyproject.toml` (`[project]`).
 - The package reads its own metadata from static constants in
-  `src/read_machine_id/__init__conf__.py`; a version bump rewrites that file, so do not
+  `src/fingerprint_machine/__init__conf__.py`; a version bump rewrites that file, so do not
   edit the version there by hand.
 - The console script name is the static `shell_command` constant in `__init__conf__.py`
-  (`read-machine-id`); `[project.scripts]` in `pyproject.toml` registers it together
-  with `read_machine_id`.
+  (`fingerprint-machine`); `[project.scripts]` in `pyproject.toml` registers it together
+  with `fingerprint_machine`.
 
 ## Dependency Auditing
 

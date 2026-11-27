@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 import lib_cli_exit_tools
 import pytest
 
-from read_machine_id import __init__conf__, entry
-from read_machine_id.adapters import cli as cli_mod
+from fingerprint_machine import __init__conf__, entry
+from fingerprint_machine.adapters import cli as cli_mod
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -35,10 +35,10 @@ def test_module_entry_executes_cli_and_shows_help(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """python -m invocation with no args shows help and exits 0."""
-    monkeypatch.setattr(sys, "argv", ["read_machine_id"], raising=False)
+    monkeypatch.setattr(sys, "argv", ["fingerprint_machine"], raising=False)
 
     with pytest.raises(SystemExit) as exc:
-        runpy.run_module("read_machine_id.__main__", run_name="__main__")
+        runpy.run_module("fingerprint_machine.__main__", run_name="__main__")
 
     captured = capsys.readouterr()
     assert exc.value.code == 0
@@ -53,12 +53,12 @@ def test_module_entry_formats_exceptions_via_exit_helpers(
     strip_ansi: Callable[[str], str],
 ) -> None:
     """Exceptions during module entry are formatted by lib_cli_exit_tools."""
-    monkeypatch.setattr(sys, "argv", ["read_machine_id", "fail"], raising=False)
+    monkeypatch.setattr(sys, "argv", ["fingerprint_machine", "fail"], raising=False)
     monkeypatch.setattr(lib_cli_exit_tools.config, "traceback", False, raising=False)
     monkeypatch.setattr(lib_cli_exit_tools.config, "traceback_force_color", False, raising=False)
 
     with pytest.raises(SystemExit) as exc:
-        runpy.run_module("read_machine_id.__main__", run_name="__main__")
+        runpy.run_module("fingerprint_machine.__main__", run_name="__main__")
 
     plain_err = strip_ansi(capsys.readouterr().err)
     assert exc.value.code != 0
@@ -72,12 +72,12 @@ def test_module_entry_traceback_flag_prints_full_traceback(
     strip_ansi: Callable[[str], str],
 ) -> None:
     """--traceback via module entry prints complete traceback on error."""
-    monkeypatch.setattr(sys, "argv", ["read_machine_id", "--traceback", "fail"])
+    monkeypatch.setattr(sys, "argv", ["fingerprint_machine", "--traceback", "fail"])
     monkeypatch.setattr(lib_cli_exit_tools.config, "traceback", False, raising=False)
     monkeypatch.setattr(lib_cli_exit_tools.config, "traceback_force_color", False, raising=False)
 
     with pytest.raises(SystemExit) as exc:
-        runpy.run_module("read_machine_id.__main__", run_name="__main__")
+        runpy.run_module("fingerprint_machine.__main__", run_name="__main__")
 
     plain_err = strip_ansi(capsys.readouterr().err)
 
@@ -106,13 +106,13 @@ def test_module_entry_cli_exports_all_registered_commands() -> None:
 
 @pytest.mark.os_agnostic
 def test_module_entry_subprocess_help() -> None:
-    """Verify `python -m read_machine_id --help` works via subprocess.
+    """Verify `python -m fingerprint_machine --help` works via subprocess.
 
     This tests the true CLI invocation path that end-users would experience,
     complementing the runpy-based tests that run in-process.
     """
     result = subprocess.run(
-        [sys.executable, "-m", "read_machine_id", "--help"],
+        [sys.executable, "-m", "fingerprint_machine", "--help"],
         capture_output=True,
         timeout=30,
         check=False,
@@ -127,9 +127,9 @@ def test_module_entry_subprocess_help() -> None:
 
 @pytest.mark.os_agnostic
 def test_module_entry_subprocess_version() -> None:
-    """Verify `python -m read_machine_id --version` outputs version."""
+    """Verify `python -m fingerprint_machine --version` outputs version."""
     result = subprocess.run(
-        [sys.executable, "-m", "read_machine_id", "--version"],
+        [sys.executable, "-m", "fingerprint_machine", "--version"],
         capture_output=True,
         timeout=30,
         check=False,
@@ -149,9 +149,9 @@ def test_entry_main_invokes_cli_with_help(
     """entry.main() wires production services and invokes CLI.
 
     This tests the console script entry point used by pip-installed commands
-    (read_machine_id, read-machine-id).
+    (fingerprint_machine, fingerprint-machine).
     """
-    monkeypatch.setattr(sys, "argv", ["read_machine_id", "--help"])
+    monkeypatch.setattr(sys, "argv", ["fingerprint_machine", "--help"])
 
     exit_code = entry.main()
 
@@ -168,7 +168,7 @@ def test_entry_main_returns_nonzero_on_error(
     strip_ansi: Callable[[str], str],
 ) -> None:
     """entry.main() returns non-zero exit code on CLI errors."""
-    monkeypatch.setattr(sys, "argv", ["read_machine_id", "fail"])
+    monkeypatch.setattr(sys, "argv", ["fingerprint_machine", "fail"])
     monkeypatch.setattr(lib_cli_exit_tools.config, "traceback", False)
     monkeypatch.setattr(lib_cli_exit_tools.config, "traceback_force_color", False)
 

@@ -17,9 +17,9 @@ import pytest
 from layer_roots import SYSTEM_LAYER_ROOT_VARIABLES
 from lib_layered_config import Config
 
-from read_machine_id import __init__conf__
-from read_machine_id.adapters.config.display import display_config
-from read_machine_id.domain.enums import OutputFormat
+from fingerprint_machine import __init__conf__
+from fingerprint_machine.adapters.config.display import display_config
+from fingerprint_machine.domain.enums import OutputFormat
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -147,7 +147,7 @@ def _config_json(tmp_path: Path, *options: str) -> dict[str, Any]:
     env = {k: v for k, v in os.environ.items() if _inherited(k)}
     env.update(dict.fromkeys(_HOMES, str(tmp_path)))
     completed = subprocess.run(  # noqa: S603 - fixed argv: this interpreter running this package
-        [sys.executable, "-m", "read_machine_id", *options, "config", "--format", "json"],
+        [sys.executable, "-m", "fingerprint_machine", *options, "config", "--format", "json"],
         cwd=tmp_path,
         env=env,
         capture_output=True,

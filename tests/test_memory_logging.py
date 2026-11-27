@@ -19,16 +19,16 @@ import lib_log_rich.runtime
 import pytest
 from lib_layered_config import Config
 
-from read_machine_id.adapters import cli as cli_mod
-from read_machine_id.adapters.logging.setup import init_logging
-from read_machine_id.composition import build_testing
+from fingerprint_machine.adapters import cli as cli_mod
+from fingerprint_machine.adapters.logging.setup import init_logging
+from fingerprint_machine.composition import build_testing
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from click.testing import CliRunner
 
-    from read_machine_id.composition import AppServices
+    from fingerprint_machine.composition import AppServices
 
 
 @pytest.mark.os_agnostic

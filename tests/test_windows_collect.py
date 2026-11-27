@@ -11,8 +11,8 @@ import json
 import pytest
 from click.testing import CliRunner
 
-from read_machine_id.adapters.cli.root import cli
-from read_machine_id.composition import build_production
+from fingerprint_machine.adapters.cli.root import cli
+from fingerprint_machine.composition import build_production
 
 
 @pytest.mark.os_windows

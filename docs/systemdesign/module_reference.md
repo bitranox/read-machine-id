@@ -10,30 +10,30 @@ moves or removes a module, a CLI option or a public name.
 ## Related Files
 
 ### Domain Layer
-- `src/read_machine_id/domain/enums.py`  -  Type-safe enums (OutputFormat, DeployTarget)
-- `src/read_machine_id/domain/errors.py`  -  Domain exceptions (ConfigurationError)
-- `src/read_machine_id/domain/json_types.py`  -  `JsonValue` / `JsonObject` type aliases for readings
-- `src/read_machine_id/domain/machine_errors.py`  -  `SourceError`, `MissingKeyError`, `UnsupportedPlatformError`, `NotAReadingError`
-- `src/read_machine_id/domain/smbios.py`  -  SMBIOS (DSP0134) parser and per-type decoders; `split_raw_smbios` for the RSMB block
-- `src/read_machine_id/domain/identity.py`  -  PCI instance serials, VMware PVSCSI SAS WWID, product-key masking, withheld registry values, machine SID, ACPI/MSDM, TBS device info
-- `src/read_machine_id/domain/certificates.py`  -  EK certificate from a registry store blob; public fields only
-- `src/read_machine_id/domain/network.py`  -  Joins the per-adapter WMI classes and the network class key into one record per adapter
-- `src/read_machine_id/domain/summary.py`  -  The `summary` block of a reading
-- `src/read_machine_id/domain/compare.py`  -  Flatten, compare and score two readings; volatile and `newer-probe-only` rules
+- `src/fingerprint_machine/domain/enums.py`  -  Type-safe enums (OutputFormat, DeployTarget)
+- `src/fingerprint_machine/domain/errors.py`  -  Domain exceptions (ConfigurationError)
+- `src/fingerprint_machine/domain/json_types.py`  -  `JsonValue` / `JsonObject` type aliases for readings
+- `src/fingerprint_machine/domain/machine_errors.py`  -  `SourceError`, `MissingKeyError`, `UnsupportedPlatformError`, `NotAReadingError`
+- `src/fingerprint_machine/domain/smbios.py`  -  SMBIOS (DSP0134) parser and per-type decoders; `split_raw_smbios` for the RSMB block
+- `src/fingerprint_machine/domain/identity.py`  -  PCI instance serials, VMware PVSCSI SAS WWID, product-key masking, withheld registry values, machine SID, ACPI/MSDM, TBS device info
+- `src/fingerprint_machine/domain/certificates.py`  -  EK certificate from a registry store blob; public fields only
+- `src/fingerprint_machine/domain/network.py`  -  Joins the per-adapter WMI classes and the network class key into one record per adapter
+- `src/fingerprint_machine/domain/summary.py`  -  The `summary` block of a reading
+- `src/fingerprint_machine/domain/compare.py`  -  Flatten, compare and score two readings; volatile and `newer-probe-only` rules
 
 ### Application Layer
-- `src/read_machine_id/application/ports.py`  -  Callable Protocol definitions for adapter functions
-- `src/read_machine_id/application/machine_ports.py`  -  `PlatformSource` and `RegistrySource` protocols, the `Sources` bundle
-- `src/read_machine_id/application/collect.py`  -  Builds a reading: every section, each question guarded, product keys masked
-- `src/read_machine_id/application/readings.py`  -  Load and save readings, compare two files, check this machine against a baseline
+- `src/fingerprint_machine/application/ports.py`  -  Callable Protocol definitions for adapter functions
+- `src/fingerprint_machine/application/machine_ports.py`  -  `PlatformSource` and `RegistrySource` protocols, the `Sources` bundle
+- `src/fingerprint_machine/application/collect.py`  -  Builds a reading: every section, each question guarded, product keys masked
+- `src/fingerprint_machine/application/readings.py`  -  Load and save readings, compare two files, check this machine against a baseline
 
 ### Adapters Layer
-- `src/read_machine_id/adapters/config/loader.py`  -  Configuration loading with LRU caching
-- `src/read_machine_id/adapters/config/deploy.py`  -  Configuration deployment
-- `src/read_machine_id/adapters/config/display.py`  -  Configuration display (TOML/JSON output, redaction)
-- `src/read_machine_id/adapters/config/overrides.py`  -  CLI `--set` override parsing and deep-merge
-- `src/read_machine_id/adapters/logging/setup.py`  -  lib_log_rich initialization; takes only the `LOG_*` lines of a `.env`, and raises `InvalidLoggingConfigError` for a refused `[lib_log_rich]` value or `LOG_*` variable, after starting logging with its defaults (and without the `LOG_*` variables only when one of them is refused); `check_logging_config` refuses another configuration's logging settings through lib_log_rich's `validate_config`, without touching the running runtime; `run_logdemo` runs lib_log_rich's demo and raises `InvalidLoggingConfigError` for a `LOG_*` variable the demo refuses
-- `src/read_machine_id/adapters/cli/`  -  CLI adapter package:
+- `src/fingerprint_machine/adapters/config/loader.py`  -  Configuration loading with LRU caching
+- `src/fingerprint_machine/adapters/config/deploy.py`  -  Configuration deployment
+- `src/fingerprint_machine/adapters/config/display.py`  -  Configuration display (TOML/JSON output, redaction)
+- `src/fingerprint_machine/adapters/config/overrides.py`  -  CLI `--set` override parsing and deep-merge
+- `src/fingerprint_machine/adapters/logging/setup.py`  -  lib_log_rich initialization; takes only the `LOG_*` lines of a `.env`, and raises `InvalidLoggingConfigError` for a refused `[lib_log_rich]` value or `LOG_*` variable, after starting logging with its defaults (and without the `LOG_*` variables only when one of them is refused); `check_logging_config` refuses another configuration's logging settings through lib_log_rich's `validate_config`, without touching the running runtime; `run_logdemo` runs lib_log_rich's demo and raises `InvalidLoggingConfigError` for a `LOG_*` variable the demo refuses
+- `src/fingerprint_machine/adapters/cli/`  -  CLI adapter package:
   - `__init__.py`  -  Public facade
   - `constants.py`  -  Shared constants
   - `safe_console.py`  -  Encode-safe terminal output; use `safe_console.echo` instead of `click.echo`
@@ -48,29 +48,29 @@ moves or removes a module, a CLI option or a public name.
   - `commands/logging.py`  -  logdemo command
   - `commands/machine.py`  -  collect, compare, check commands
   - `machine_output.py`  -  JSON envelope, `--json-bare`, rich tables and `MachineExit` codes for the machine commands
-- `src/read_machine_id/adapters/windows/platform.py`  -  `PwshpyPlatformSource`: WMI/CIM through pwshpy, firmware tables
-- `src/read_machine_id/adapters/windows/firmware.py`  -  ctypes calls: `GetSystemFirmwareTable` (RSMB, ACPI), `GetFirmwareType`, `Tbsi_GetDeviceInfo`
-- `src/read_machine_id/adapters/windows/registry.py`  -  `LibRegistrySource`: registry through lib_registry (fake_winreg off Windows)
-- `src/read_machine_id/adapters/fixture.py`  -  `FixtureSources`: replays a recorded machine from JSON (the test seam)
+- `src/fingerprint_machine/adapters/windows/platform.py`  -  `PwshpyPlatformSource`: WMI/CIM through pwshpy, firmware tables
+- `src/fingerprint_machine/adapters/windows/firmware.py`  -  ctypes calls: `GetSystemFirmwareTable` (RSMB, ACPI), `GetFirmwareType`, `Tbsi_GetDeviceInfo`
+- `src/fingerprint_machine/adapters/windows/registry.py`  -  `LibRegistrySource`: registry through lib_registry (fake_winreg off Windows)
+- `src/fingerprint_machine/adapters/fixture.py`  -  `FixtureSources`: replays a recorded machine from JSON (the test seam)
 
 ### Adapters Layer (In-Memory / Testing)
-- `src/read_machine_id/adapters/memory/__init__.py`  -  Public facade + Protocol conformance assertions
-- `src/read_machine_id/adapters/memory/config.py`  -  In-memory config adapters
-- `src/read_machine_id/adapters/memory/logging.py`  -  In-memory logging (a quiet lib_log_rich runtime for tests)
+- `src/fingerprint_machine/adapters/memory/__init__.py`  -  Public facade + Protocol conformance assertions
+- `src/fingerprint_machine/adapters/memory/config.py`  -  In-memory config adapters
+- `src/fingerprint_machine/adapters/memory/logging.py`  -  In-memory logging (a quiet lib_log_rich runtime for tests)
 
 ### Composition Layer
-- `src/read_machine_id/composition/__init__.py`  -  Wires adapters to ports
+- `src/fingerprint_machine/composition/__init__.py`  -  Wires adapters to ports
 
 ### Entry Points
-- `src/read_machine_id/entry.py`  -  Console-script entry point; wires production services before invoking the CLI
-- `src/read_machine_id/__main__.py`  -  Thin shim for `python -m`
-- `src/read_machine_id/__init__.py`  -  Public API exports
-- `src/read_machine_id/__init__conf__.py`  -  Package metadata constants
+- `src/fingerprint_machine/entry.py`  -  Console-script entry point; wires production services before invoking the CLI
+- `src/fingerprint_machine/__main__.py`  -  Thin shim for `python -m`
+- `src/fingerprint_machine/__init__.py`  -  Public API exports
+- `src/fingerprint_machine/__init__conf__.py`  -  Package metadata constants
 
 ### Configuration Defaults
-- `src/read_machine_id/adapters/config/defaultconfig.toml`  -  Base defaults
-- `src/read_machine_id/adapters/config/defaultconfig.d/40-layered-config.toml`  -  lib_layered_config integration docs
-- `src/read_machine_id/adapters/config/defaultconfig.d/90-logging.toml`  -  Logging defaults
+- `src/fingerprint_machine/adapters/config/defaultconfig.toml`  -  Base defaults
+- `src/fingerprint_machine/adapters/config/defaultconfig.d/40-layered-config.toml`  -  lib_layered_config integration docs
+- `src/fingerprint_machine/adapters/config/defaultconfig.d/90-logging.toml`  -  Logging defaults
 
 ### Tests
 - `conftest.py` (repository root)  -  The two configuration-layer redirects; at the root so they also reach the doctests `--doctest-modules` collects from `src/`
@@ -161,7 +161,7 @@ POSIX-conventional exit codes defined in `adapters/cli/exit_codes.py`:
 
 ### Root Command
 
-**Command:** `read-machine-id`
+**Command:** `fingerprint-machine`
 
 | Option                         | Description                                 |
 |--------------------------------|---------------------------------------------|
