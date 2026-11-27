@@ -50,12 +50,12 @@ fallback: it is read only when no `.env` is found in the working directory or on
 
 ### Path Placeholders
 
-| Placeholder  | Linux                      | macOS / Windows            |
-|--------------|----------------------------|----------------------------|
-| `{slug}`     | `read-machine-id` | -                          |
-| `{vendor}`   | -                          | `bitranox`                 |
-| `{app}`      | -                          | `read_machine_id` |
-| `{hostname}` | System hostname            | System hostname            |
+| Placeholder  | Linux             | macOS / Windows   |
+|--------------|-------------------|-------------------|
+| `{slug}`     | `read-machine-id` | -                 |
+| `{vendor}`   | -                 | `bitranox`        |
+| `{app}`      | -                 | `read_machine_id` |
+| `{hostname}` | System hostname   | System hostname   |
 
 ### Concrete Examples
 
@@ -95,11 +95,9 @@ read-machine-id --profile production config
 
 # Override settings at runtime (repeatable)
 read-machine-id --set lib_log_rich.console_level=DEBUG config
-read-machine-id --set email.from_address=test@example.com --set email.smtp_hosts='["smtp.example.com:587"]' send-email ...
 
 # Load configuration from an explicit .env file
 read-machine-id --env-file /etc/myapp/.env config
-read-machine-id --env-file ./environments/production.env send-notification ...
 
 # Show full traceback for debugging
 read-machine-id --traceback config-deploy --target user
@@ -113,11 +111,11 @@ Display the merged configuration from all sources (defaults -> app -> host -> us
 
 #### Options Reference
 
-| Option           | Required | Description                                                   |
-|------------------|:--------:|---------------------------------------------------------------|
-| `--format`       | No       | Output format: `human` (default) or `json`.                   |
-| `--section NAME` | No       | Show only a specific section (e.g., `lib_log_rich`, `email`). |
-| `--profile NAME` | No       | Load configuration for a specific profile.                    |
+| Option           | Required | Description                                          |
+|------------------|:--------:|------------------------------------------------------|
+| `--format`       | No       | Output format: `human` (default) or `json`.          |
+| `--section NAME` | No       | Show only a specific section (e.g., `lib_log_rich`). |
+| `--profile NAME` | No       | Load configuration for a specific profile.           |
 
 #### Examples
 
@@ -135,7 +133,7 @@ read-machine-id config --section lib_log_rich
 read-machine-id config --profile production
 
 # Combine options
-read-machine-id config --profile staging --format json --section email
+read-machine-id config --profile staging --format json --section lib_log_rich
 ```
 
 ### Deploy Configuration Files
@@ -179,8 +177,8 @@ read-machine-id config-deploy --target user --profile production
 read-machine-id config-deploy --target user --profile production --force
 ```
 
-Every target receives `config.toml` plus `config.d/40-layered-config.toml`, `config.d/50-mail.toml`
-and `config.d/90-logging.toml` (the host target writes `hosts/{hostname}.toml` and
+Every target receives `config.toml` plus `config.d/40-layered-config.toml` and
+`config.d/90-logging.toml` (the host target writes `hosts/{hostname}.toml` and
 `hosts/{hostname}.d/`). With `--force`, a file whose content differs from the bundled one is
 replaced and the old file is kept as `<name>.bak` (numbered, `<name>.bak.1` and so on, when a
 backup already exists); a file whose content is already identical is left as it is, mode
@@ -368,11 +366,10 @@ read-machine-id --set lib_log_rich.console_level=DEBUG config
 read-machine-id --set lib_log_rich.console_level=DEBUG --set lib_log_rich.console_format_preset=short config
 
 # Override nested values
-read-machine-id --set email.attachments.max_size_bytes=10485760 config
+read-machine-id --set lib_log_rich.payload_limits.context_max_keys=30 config
 
 # Override with JSON arrays/objects (use single quotes around the value)
-read-machine-id --set email.smtp_hosts='["smtp.example.com:587"]' config
-read-machine-id --set email.recipients='["admin@example.com", "ops@example.com"]' config
+read-machine-id --set lib_log_rich.console_styles='{"ERROR": "bold red"}' config
 
 # Combine with profile
 read-machine-id --profile production --set lib_log_rich.console_level=DEBUG config
@@ -458,8 +455,8 @@ Configuration can be overridden via environment variables using two methods:
 For logging configuration, use the native `LOG_*` variables (highest precedence):
 
 ```bash
-LOG_CONSOLE_LEVEL=DEBUG read-machine-id hello
-LOG_ENABLE_GRAYLOG=true LOG_GRAYLOG_ENDPOINT="logs.example.com:12201" read-machine-id hello
+LOG_CONSOLE_LEVEL=DEBUG read-machine-id info
+LOG_ENABLE_GRAYLOG=true LOG_GRAYLOG_ENDPOINT="logs.example.com:12201" read-machine-id info
 ```
 
 ### Method 2: Application-Prefixed Variables
@@ -467,8 +464,7 @@ LOG_ENABLE_GRAYLOG=true LOG_GRAYLOG_ENDPOINT="logs.example.com:12201" read-machi
 For any configuration section, use the format: `<PREFIX>___<SECTION>__<KEY>=value`
 
 ```bash
-READ_MACHINE_ID___LIB_LOG_RICH__CONSOLE_LEVEL=DEBUG read-machine-id hello
-READ_MACHINE_ID___EMAIL__SMTP_HOSTS='["smtp.example.com:587"]' read-machine-id hello
+READ_MACHINE_ID___LIB_LOG_RICH__CONSOLE_LEVEL=DEBUG read-machine-id info
 ```
 
 **Separator reference:**
@@ -503,7 +499,6 @@ To load a specific `.env` file instead, use `--env-file`:
 ```bash
 # Load from an explicit path (skips upward directory search)
 read-machine-id --env-file /opt/myapp/config/.env config
-read-machine-id --env-file ./environments/staging.env send-notification ...
 ```
 
 The file must exist and be readable; Click validates this before the command runs.
@@ -547,7 +542,7 @@ only `config.toml` plus its `config.d/` files.
 **Why this works:**
 - Files in each layer's `config.d/` directory are loaded in lexical order after `config.toml`
 - Higher-numbered files (e.g., `999-`) load last and override earlier values, including the
-  deployed `40-`, `50-` and `90-` files
+  deployed `40-` and `90-` files
 - `config-deploy` never writes a `999-myconfig.toml`, so a redeploy leaves your file alone
 
 **Example `999-myconfig.toml`:**
@@ -557,9 +552,6 @@ only `config.toml` plus its `config.d/` files.
 
 [lib_log_rich]
 console_level = "DEBUG"
-
-[email]
-smtp_hosts = ["smtp.mycompany.com:587"]
 ```
 
 This approach keeps your customizations separate and safe from updates while still benefiting from new default values added in future versions.
@@ -579,5 +571,4 @@ print(config.as_dict())
 
 # Access specific sections
 log_config = config.get("lib_log_rich", default={})
-email_config = config.get("email", default={})
 ```

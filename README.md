@@ -137,7 +137,6 @@ read-machine-id --version
 read-machine-id config-deploy --target user
 
 # Try it out
-read-machine-id hello
 read-machine-id info
 read-machine-id config
 ```
@@ -154,8 +153,7 @@ The CLI leverages [rich-click](https://github.com/ewels/rich-click) so help outp
 # Display package information
 read-machine-id info
 
-# Greeting and error-handling demos
-read-machine-id hello
+# Error-handling demo
 read-machine-id fail
 read-machine-id --traceback fail
 
@@ -189,35 +187,13 @@ read-machine-id config-generate-examples --destination ./examples
 
 # Load configuration from an explicit .env file (skips upward directory search)
 read-machine-id --env-file /path/to/.env config
-read-machine-id --env-file ./environments/production.env send-notification ...
 
 # Override configuration at runtime (repeatable --set)
 read-machine-id --set lib_log_rich.console_level=DEBUG config
-read-machine-id --set email.smtp_hosts='["smtp.example.com:587"]' config --format json
 
 # Logging demo
 read-machine-id logdemo
 LOG_CONSOLE_LEVEL=DEBUG read-machine-id logdemo   # logdemo reads LOG_* only, not --set
-
-# Send email
-read-machine-id send-email \
-    --to recipient@example.com \
-    --subject "Test Email" \
-    --body "Hello from bitranox!"
-
-# Send email with HTML body and attachments
-read-machine-id send-email \
-    --to recipient@example.com \
-    --subject "Monthly Report" \
-    --body "See attached." \
-    --body-html "<h1>Report</h1><p>Details in the PDF.</p>" \
-    --attachment report.pdf
-
-# Send plain-text notification
-read-machine-id send-notification \
-    --to ops@example.com \
-    --subject "Deploy OK" \
-    --message "Application deployed successfully"
 
 # All commands work with any entry point
 python -m read_machine_id info
@@ -225,192 +201,6 @@ uvx read-machine-id info
 ```
 
 ---
-
-### Email Sending
-
-The application includes email sending capabilities via [btx-lib-mail](https://pypi.org/project/btx-lib-mail/), supporting both simple notifications and rich HTML emails with attachments.
-
-#### Email Configuration
-
-Configure email settings via environment variables, `.env` file, or configuration files:
-
-**Environment Variables:**
-
-Environment variables use the format: `<PREFIX>___<SECTION>__<KEY>=value`
-- Triple underscore (`___`) separates PREFIX from SECTION
-- Double underscore (`__`) separates SECTION from KEY
-
-```bash
-# A list is a JSON array; a comma-separated value would be ONE host string
-export READ_MACHINE_ID___EMAIL__SMTP_HOSTS='["smtp.gmail.com:587","smtp.backup.com:587"]'
-export READ_MACHINE_ID___EMAIL__FROM_ADDRESS="alerts@myapp.com"
-export READ_MACHINE_ID___EMAIL__SMTP_USERNAME="your-email@gmail.com"
-export READ_MACHINE_ID___EMAIL__SMTP_PASSWORD="your-app-password"
-export READ_MACHINE_ID___EMAIL__USE_STARTTLS="true"
-export READ_MACHINE_ID___EMAIL__TIMEOUT="60.0"
-```
-
-**Configuration File**:
-```toml
-[email]
-smtp_hosts = ["smtp.gmail.com:587", "smtp.backup.com:587"]  # Fallback to backup if primary fails
-from_address = "alerts@myapp.com"
-smtp_username = "myuser@gmail.com"
-smtp_password = "secret_password"  # Consider using environment variables for sensitive data
-use_starttls = true
-starttls_verify = true   # false accepts any certificate: only for a known internal relay
-timeout = 60.0
-# local_hostname = "mail.example.com"   # EHLO name; set it where reverse DNS is slow
-# delivery_deadline = 300               # upper bound in seconds for one SMTP session; 0 = none
-```
-
-A key `[email]` or `[email.attachments]` does not know is refused (exit 78,
-`email.<key>: unknown key`), whichever layer it comes from, so a typo cannot leave a setting at
-its default.
-
-**`.env` File** (no prefix in .env; a prefixed key is not recognised):
-```bash
-# Email configuration for local testing
-EMAIL__SMTP_HOSTS=["smtp.gmail.com:587"]
-EMAIL__FROM_ADDRESS=noreply@example.com
-```
-
-#### Gmail Configuration Example
-
-For Gmail, create an [App Password](https://support.google.com/accounts/answer/185833) instead of using your account password.
-In a `.env` file (no prefix in .env; a prefixed key is not recognised):
-
-```bash
-EMAIL__SMTP_HOSTS=["smtp.gmail.com:587"]
-EMAIL__FROM_ADDRESS=your-email@gmail.com
-EMAIL__SMTP_USERNAME=your-email@gmail.com
-EMAIL__SMTP_PASSWORD=your-16-char-app-password
-```
-
-or as environment variables (these need the prefix):
-
-```bash
-export READ_MACHINE_ID___EMAIL__SMTP_HOSTS='["smtp.gmail.com:587"]'
-export READ_MACHINE_ID___EMAIL__FROM_ADDRESS=your-email@gmail.com
-export READ_MACHINE_ID___EMAIL__SMTP_USERNAME=your-email@gmail.com
-export READ_MACHINE_ID___EMAIL__SMTP_PASSWORD=your-16-char-app-password
-```
-
-#### Send Simple Email
-
-```bash
-# Send basic email to one recipient
-read-machine-id send-email \
-    --to recipient@example.com \
-    --subject "Test Email" \
-    --body "Hello from bitranox!"
-
-# Send to multiple recipients
-read-machine-id send-email \
-    --to user1@example.com \
-    --to user2@example.com \
-    --subject "Team Update" \
-    --body "Please review the latest changes"
-```
-
-#### Send HTML Email with Attachments
-
-```bash
-read-machine-id send-email \
-    --to recipient@example.com \
-    --subject "Monthly Report" \
-    --body "Please find the monthly report attached." \
-    --body-html "<h1>Monthly Report</h1><p>See attached PDF for details.</p>" \
-    --attachment report.pdf \
-    --attachment data.csv
-```
-
-#### Send Notifications
-
-For simple plain-text notifications, use the convenience command:
-
-```bash
-# Single recipient
-read-machine-id send-notification \
-    --to ops@example.com \
-    --subject "Deployment Success" \
-    --message "Application deployed successfully to production at $(date)"
-
-# Multiple recipients
-read-machine-id send-notification \
-    --to admin1@example.com \
-    --to admin2@example.com \
-    --subject "System Alert" \
-    --message "Database backup completed successfully"
-```
-
-#### Programmatic Email Usage
-
-```python
-from pydantic import SecretStr
-
-from read_machine_id.adapters.email.sender import EmailConfig
-from read_machine_id.composition import send_email, send_notification
-
-# Configure email. EmailConfig is a btx_lib_mail ConfMail, so in Python the fields use the
-# library's names (smtphosts, smtp_use_starttls, smtp_timeout, smtp_starttls_verify,
-# smtp_local_hostname, smtp_delivery_deadline); configuration files keep their keys (smtp_hosts,
-# use_starttls, timeout, starttls_verify, local_hostname, delivery_deadline). smtp_password is a SecretStr: it prints as
-# '**********' in logs, reprs and dumps, and config.smtp_password.get_secret_value() returns
-# the plain text.
-config = EmailConfig(
-    smtphosts=["smtp.gmail.com:587"],
-    from_address="alerts@myapp.com",
-    smtp_username="myuser@gmail.com",
-    smtp_password=SecretStr("app-password"),
-    smtp_timeout=60.0,
-)
-
-# Send simple email
-send_email(
-    config=config,
-    recipients="recipient@example.com",
-    subject="Test Email",
-    body="Hello from Python!",
-)
-
-# Send email with HTML and attachments
-from pathlib import Path
-
-send_email(
-    config=config,
-    recipients=["user1@example.com", "user2@example.com"],
-    subject="Report",
-    body="See attached report",
-    body_html="<h1>Report</h1><p>Details in attachment</p>",
-    attachments=[Path("report.pdf")],
-)
-
-# Send notification
-send_notification(
-    config=config,
-    recipients="ops@example.com",
-    subject="Deployment Complete",
-    message="Production deployment finished successfully",
-)
-```
-
-#### Email Troubleshooting
-
-**Connection Failures:**
-- Verify SMTP hostname and port are correct
-- Check firewall allows outbound connections on SMTP port
-- Test connectivity: `telnet smtp.gmail.com 587`
-
-**Authentication Errors:**
-- For Gmail: Use App Password, not account password
-- Ensure username/password are correct
-- Check for 2FA requirements
-
-**Emails Not Arriving:**
-- Check recipient's spam folder
-- Verify `from_address` is valid and not blacklisted
-- Review SMTP server logs for delivery status
 
 ## Further Documentation
 
