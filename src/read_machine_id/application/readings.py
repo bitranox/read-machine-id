@@ -40,8 +40,10 @@ def load_reading(path: Path) -> JsonObject:
         document: object = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise NotAReadingError(f"{path}: {exc}") from exc
-    if isinstance(document, dict) and "meta" not in document and isinstance(document.get("data"), dict):
-        document = cast("dict[str, object]", document)["data"]
+    if isinstance(document, dict):
+        envelope = cast("dict[str, object]", document)
+        if "meta" not in envelope and isinstance(envelope.get("data"), dict):
+            document = envelope["data"]
     if not isinstance(document, dict) or not isinstance(cast("dict[str, object]", document).get("meta"), dict):
         raise NotAReadingError(f"{path}: not a reading (no 'meta' object)")
     return cast("JsonObject", document)

@@ -75,6 +75,7 @@ def inject_deploy_with_permission_capture(
             display_config=prod.display_config,
             init_logging=prod.init_logging,
             check_logging_config=prod.check_logging_config,
+            machine_sources=prod.machine_sources,
         )
         return lambda: test_services
 

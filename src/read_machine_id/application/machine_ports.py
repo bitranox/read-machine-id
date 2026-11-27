@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from ..domain.json_types import JsonObject
 
 #: One registry value's data, as winreg returns it.
-RegistryData: TypeAlias = "None | bytes | int | str | list[str]"
+RegistryData: TypeAlias = "bytes | int | str | list[str] | None"
 
 
 class PlatformSource(Protocol):

@@ -99,7 +99,8 @@ def registry_json(data: RegistryData) -> JsonValue:
     if isinstance(data, bytes):
         return data.hex()
     if isinstance(data, list):
-        return list[JsonValue](data)
+        items: list[JsonValue] = list(data)
+        return items
     return data
 
 
@@ -190,17 +191,33 @@ def _category_rows(src: Sources, class_name: str) -> list[JsonObject]:
     return src.platform.cim(class_name, namespace=namespace)
 
 
+def _category_json(src: Sources, class_name: str) -> JsonValue:
+    rows: list[JsonValue] = list(_category_rows(src, class_name))
+    return rows
+
+
+def _class_keys_json(src: Sources) -> JsonValue:
+    keys: JsonObject = dict(_class_keys(src))
+    return keys
+
+
+def _subkeys_json(src: Sources, key: str) -> JsonValue:
+    names: list[JsonValue] = list(src.registry.subkeys(key))
+    return names
+
+
 def read_network(src: Sources) -> JsonValue:
     """Read every adapter with every per-adapter class joined to it."""
     adapters = src.platform.cim("MSFT_NetAdapter", namespace=_STANDARD)
     categories: dict[str, Sequence[JsonObject]] = {}
     errors: JsonObject = {}
     for category, class_name in {**BY_NAME, **BY_INDEX}.items():
-        try:
-            categories[category] = _category_rows(src, class_name)
-        except _ANSWER_ERRORS as exc:
-            errors[category] = f"{type(exc).__name__}: {exc}"
-    class_keys = _guarded(lambda: dict[str, JsonValue](_class_keys(src)))
+        answer = _guarded(lambda class_name=class_name: _category_json(src, class_name))
+        if isinstance(answer, list):
+            categories[category] = [r for r in answer if isinstance(r, dict)]
+        else:
+            errors[category] = answer
+    class_keys = _guarded(lambda: _class_keys_json(src))
     joined = join_adapters(adapters, categories, _as_class_keys(class_keys))
     joined["errors"] = errors
     if not isinstance(class_keys, dict) or "error" in class_keys:
@@ -217,10 +234,10 @@ def _as_class_keys(value: JsonValue) -> dict[str, JsonObject]:
 def _instances(src: Sources) -> Iterable[str]:
     # Enum\<bus>\<device>\<instance>: one key per device instance Windows has ever seen.
     for bus in src.registry.subkeys(_ENUM):
-        devices = _guarded(lambda bus=bus: list[JsonValue](src.registry.subkeys(rf"{_ENUM}\{bus}")))
+        devices = _guarded(lambda bus=bus: _subkeys_json(src, rf"{_ENUM}\{bus}"))
         for device in devices if isinstance(devices, list) else []:
             path = rf"{bus}\{device}"
-            found = _guarded(lambda path=path: list[JsonValue](src.registry.subkeys(rf"{_ENUM}\{path}")))
+            found = _guarded(lambda path=path: _subkeys_json(src, rf"{_ENUM}\{path}"))
             yield from (rf"{path}\{inst}" for inst in (found if isinstance(found, list) else []))
 
 
@@ -247,7 +264,8 @@ def read_devices(src: Sources) -> JsonValue:
                 "driver": drivers.get(inst.upper()),
             }
         )
-    acpi: list[JsonValue] = sorted({k.split("\\")[1] for k in present if k.startswith("ACPI\\")})
+    acpi: list[JsonValue] = []
+    acpi.extend(sorted({k.split("\\")[1] for k in present if k.startswith("ACPI\\")}))
     drivers_error = drivers_answer if isinstance(drivers_answer, dict) else None
     return {"instances": rows, "acpi_ids": acpi, "drivers_error": drivers_error}
 
@@ -258,7 +276,10 @@ def _local_sids(src: Sources) -> JsonValue:
 
 
 def _cloud_join(src: Sources) -> JsonValue:
-    return {thumb: _guarded(lambda t=thumb: _values(src, rf"{_CLOUD_JOIN}\{t}")) for thumb in src.registry.subkeys(_CLOUD_JOIN)}
+    return {
+        thumb: _guarded(lambda t=thumb: _values(src, rf"{_CLOUD_JOIN}\{t}"))
+        for thumb in src.registry.subkeys(_CLOUD_JOIN)
+    }
 
 
 def _current_version(src: Sources) -> JsonValue:

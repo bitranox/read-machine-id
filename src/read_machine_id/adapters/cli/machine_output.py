@@ -119,7 +119,9 @@ def render_comparison(cmp: Comparison, document: JsonObject, *, diff_only: bool)
         if diff_only and row.status not in DIFFERING:
             continue
         table.add_row(row.path, _short(row.original, 40), _short(row.actual, 40), row.status.value)
-    score = f"identical: {document['identical']} of {document['scored']} scored fields ({document['identical_pct']} %)\n"
+    score = (
+        f"identical: {document['identical']} of {document['scored']} scored fields ({document['identical_pct']} %)\n"
+    )
     return _render(table) + score
 
 

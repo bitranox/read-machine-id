@@ -1,7 +1,7 @@
 """Decode a raw SMBIOS structure table (DMTF DSP0134) into JSON.
 
-Windows hands out the firmware's SMBIOS table as one block of bytes (WMI class
-``MSSmBios_RawSMBiosTables``). WMI's own classes expose only part of it: no OEM strings (type 11),
+Windows hands out the firmware's SMBIOS table as one block of bytes
+(``GetSystemFirmwareTable('RSMB')``). WMI's own classes expose only part of it: no OEM strings (type 11),
 no slots (type 9), no onboard devices (type 41), and on older builds not even the system family
 or SKU. This module reads the block itself, so every structure is kept, and the types that carry
 identity or device numbers are decoded field by field.
@@ -334,7 +334,7 @@ def decode_smbios(table: bytes, version: str) -> JsonObject:
     """Decode the whole table: every structure raw, the identity-bearing types field by field.
 
     Args:
-        table: the raw structure table (``MSSmBios_RawSMBiosTables.SMBiosData``).
+        table: the raw structure table (what follows the RSMB header, see :func:`split_raw_smbios`).
         version: the SMBIOS version Windows reports, e.g. ``"3.1"``.
 
     Returns:

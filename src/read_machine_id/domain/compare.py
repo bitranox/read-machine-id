@@ -154,7 +154,7 @@ def schema_version(reading: Mapping[str, JsonValue]) -> JsonValue:
     return meta.get("schema_version", meta.get("probe_version"))
 
 
-def _status(path: str, in_a: bool, in_b: bool, *, same_schema: bool) -> FieldStatus:
+def _status(path: str, *, in_a: bool, in_b: bool, same_schema: bool) -> FieldStatus:
     if is_volatile(path):
         return FieldStatus.VOLATILE
     if in_a and in_b:
@@ -181,7 +181,7 @@ def compare_readings(a: JsonObject, b: JsonObject) -> Comparison:
     out = Comparison()
     for path in sorted(set(fa) | set(fb)):
         va, vb = fa.get(path), fb.get(path)
-        status = _status(path, path in fa, path in fb, same_schema=same_schema)
+        status = _status(path, in_a=path in fa, in_b=path in fb, same_schema=same_schema)
         if status is FieldStatus.SAME and va != vb:
             status = FieldStatus.DIFF
         out.rows.append(FieldRow(path, va, vb, status))

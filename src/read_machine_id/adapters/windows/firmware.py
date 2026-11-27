@@ -19,8 +19,12 @@ from __future__ import annotations
 
 import ctypes
 import sys
+from typing import TYPE_CHECKING
 
 from ...domain.machine_errors import SourceError
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 #: Provider signatures as GetSystemFirmwareTable takes them (the four characters, big-endian).
 RSMB = int.from_bytes(b"RSMB", "big")
@@ -37,13 +41,17 @@ def _not_windows() -> SourceError:
     return SourceError(f"firmware tables need Windows, this is {sys.platform}")
 
 
-def _call_sized(fetch: object, *args: int) -> bytes:
+def _last_error() -> int:
+    if sys.platform == "win32":
+        return ctypes.get_last_error()
+    return 0
+
+
+def _call_sized(fetch: Callable[..., int], *args: int) -> bytes:
     """Call a ``(..., buffer, size) -> needed`` API twice: once for the size, once for the data."""
-    if not callable(fetch):
-        raise _not_windows()
     needed = int(fetch(*args, None, 0))
     if needed == 0:
-        raise SourceError(f"firmware table call failed, Windows error {ctypes.get_last_error()}")
+        raise SourceError(f"firmware table call failed, Windows error {_last_error()}")
     buffer = ctypes.create_string_buffer(needed)
     written = int(fetch(*args, buffer, needed))
     if written != needed:
@@ -89,7 +97,7 @@ def firmware_type() -> str:
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
     value = ctypes.c_uint(0)
     if not kernel32.GetFirmwareType(ctypes.byref(value)):
-        raise SourceError(f"GetFirmwareType failed, Windows error {ctypes.get_last_error()}")
+        raise SourceError(f"GetFirmwareType failed, Windows error {_last_error()}")
     return _FIRMWARE_TYPES.get(value.value, f"unknown({value.value})")
 
 

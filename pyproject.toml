@@ -21,6 +21,9 @@ dependencies = [
     # `orjson` extra and the code falls back to stdlib json. Drop the marker once orjson
     # publishes cp314t wheels.
     "orjson>=3.13.0; python_version < \"3.14\"",
+    "pwshpy>=1.12.3",
+    "lib-registry>=3.4.0",
+    "cryptography>=42",
 ]
 license = { text = "MIT" }
 authors = [{ name = "bitranox", email = "bitranox@gmail.com" }]
@@ -330,4 +333,4 @@ ignores = ["E003"]
 
 [tool.uv]
 exclude-newer = "7 days"
-exclude-newer-package = {lib-cli-exit-tools = false, lib-layered-config = false, lib-log-rich = false}
+exclude-newer-package = {lib-cli-exit-tools = false, lib-layered-config = false, lib-log-rich = false, lib-registry = false, fake-winreg = false, pwshpy = false}

@@ -385,6 +385,7 @@ def inject_config(
             # CliRunner's stderr, so a stderr assertion would depend on timing.
             init_logging=init_logging_in_memory,
             check_logging_config=check_logging_config_in_memory,
+            machine_sources=prod.machine_sources,
         )
         return lambda: test_services
 
@@ -438,6 +439,7 @@ def inject_config_with_profile_capture(
             # CliRunner's stderr, so a stderr assertion would depend on timing.
             init_logging=init_logging_in_memory,
             check_logging_config=check_logging_config_in_memory,
+            machine_sources=prod.machine_sources,
         )
         return lambda: test_services
 
@@ -500,6 +502,7 @@ def inject_deploy_with_profile_capture(
             # CliRunner's stderr, so a stderr assertion would depend on timing.
             init_logging=init_logging_in_memory,
             check_logging_config=check_logging_config_in_memory,
+            machine_sources=prod.machine_sources,
         )
         return lambda: test_services
 
@@ -545,6 +548,7 @@ def inject_deploy_configuration() -> Callable[[Callable[..., list[Path]]], Calla
             # CliRunner's stderr, so a stderr assertion would depend on timing.
             init_logging=init_logging_in_memory,
             check_logging_config=check_logging_config_in_memory,
+            machine_sources=prod.machine_sources,
         )
         return lambda: test_services
 
@@ -623,6 +627,7 @@ def config_cli_context(
             # CliRunner's stderr, so a stderr assertion would depend on timing.
             init_logging=init_logging_in_memory,
             check_logging_config=check_logging_config_in_memory,
+            machine_sources=prod.machine_sources,
         )
         return lambda: test_services
 
