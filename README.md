@@ -24,8 +24,9 @@ What it is for:
 - You want a hardware and identity inventory from a script, as JSON rather than screen text.
 
 It works on any Windows machine, physical or virtual. On Linux this version reads the CPU's CPUID
-leaves (the `cpuid` section); the other Linux sections are still to come. Reading needs Windows or
-Linux; comparing two saved readings also works on macOS.
+leaves (the `cpuid` section); the other Linux sections are still to come. Reading a machine needs
+Windows or Linux, and any other OS is refused. Comparing two saved readings reads no machine, but
+the tool is built and tested on Windows and Linux only.
 
 ---
 
@@ -40,7 +41,7 @@ uvx fingerprint-machine collect --out before.json
 # Later, or after the move: read again and compare with the saved one
 uvx fingerprint-machine check before.json --save after.json --diff-only
 
-# Compare two saved readings anywhere, Linux and macOS included
+# Compare two saved readings, on Windows or Linux
 uvx fingerprint-machine compare before.json after.json --diff-only
 ```
 

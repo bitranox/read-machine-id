@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from functools import partial
 from typing import TYPE_CHECKING
 
 from ..adapters.config.deploy import deploy_configuration
@@ -64,22 +65,37 @@ class AppServices:
     machine_sources: Callable[[], MachineSources]
 
 
-def machine_sources() -> MachineSources:
+def machine_sources(*, platform: str = sys.platform) -> MachineSources:
     """Return the sources of the machine this runs on: Windows or Linux.
+
+    Args:
+        platform: The ``sys.platform`` value to wire for. The default is the running
+            interpreter's; a test passes another to reach the refusal on any runner.
+
+    Returns:
+        The Windows or Linux sources.
 
     Raises:
         UnsupportedPlatformError: neither Windows nor Linux; there is nothing this tool can read.
     """
-    if sys.platform == "win32":
+    if platform == "win32":
         return WindowsSources(platform=PwshpyPlatformSource(), registry=LibRegistrySource(), cpuid=NativeCpuid())
-    if sys.platform.startswith("linux"):
+    if platform.startswith("linux"):
         return LinuxSources(system=SysfsLinuxSource(), cpuid=NativeCpuid())
-    msg = f"reading a machine needs Windows or Linux; this is {sys.platform}. 'compare' works everywhere."
+    msg = f"reading a machine needs Windows or Linux; this is {platform}. 'compare' works everywhere."
     raise UnsupportedPlatformError(msg)
 
 
-def build_production() -> AppServices:
-    """Wire production adapters into an AppServices container."""
+def build_production(*, platform: str = sys.platform) -> AppServices:
+    """Wire production adapters into an AppServices container.
+
+    Args:
+        platform: The ``sys.platform`` value whose machine sources to wire (see
+            :func:`machine_sources`). The default is the running interpreter's.
+
+    Returns:
+        AppServices container with the production adapters.
+    """
     return AppServices(
         get_config=get_config,
         get_default_config_path=get_default_config_path,
@@ -87,7 +103,7 @@ def build_production() -> AppServices:
         display_config=display_config,
         init_logging=init_logging,
         check_logging_config=check_logging_config,
-        machine_sources=machine_sources,
+        machine_sources=partial(machine_sources, platform=platform),
     )
 
 

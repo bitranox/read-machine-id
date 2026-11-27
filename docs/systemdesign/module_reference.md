@@ -110,7 +110,7 @@ moves or removes a module, a CLI option or a public name.
 - `tests/test_logging.py`  -  Logging configuration model
 - `tests/test_logging_dotenv_isolation.py`  -  Only `LOG_*` lines of a `.env` reach the environment; an invalid `[lib_log_rich]` section or `LOG_*` variable is a configuration failure that leaves logging running
 - `tests/test_memory_logging.py`  -  Testing-composition logging runtime and the per-test logging reset
-- `tests/test_machine_cli.py`  -  collect, compare and check end to end on a recorded machine; `--no-cpuid`; the macOS refusal
+- `tests/test_machine_cli.py`  -  collect, compare and check end to end on a recorded machine; `--no-cpuid`; the refusal on an OS that is neither Windows nor Linux
 - `tests/test_metadata.py`  -  Package metadata and PEP 561 marker tests
 - `tests/test_metadata_sync.py`  -  `__init__conf__` constants stay in sync with `pyproject.toml`
 - `tests/test_module_entry.py`  -  `python -m` entry tests

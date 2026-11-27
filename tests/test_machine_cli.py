@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -281,11 +280,16 @@ def test_a_file_that_is_not_a_reading_is_refused_as_json(tmp_path: Path) -> None
     assert (failure["ok"], _obj(failure["error"])["type"]) == (False, "NotAReadingError")
 
 
-@pytest.mark.os_macos
-def test_collect_on_macos_is_refused_with_exit_2() -> None:
-    assert sys.platform == "darwin"
-    code, out = _run(["collect", "--json-bare"], build_production)
+@pytest.mark.os_agnostic
+@pytest.mark.parametrize("verb", ["collect", "check"])
+def test_reading_a_machine_on_an_unsupported_os_is_refused_with_exit_2(verb: str, tmp_path: Path) -> None:
+    """Production wiring for an OS that is neither Windows nor Linux refuses, wherever the test runs."""
+    baseline = tmp_path / "base.json"
+    assert _run(["collect", "--out", str(baseline)], _machine())[0] == 0
+    args = ["collect"] if verb == "collect" else ["check", str(baseline)]
+    code, out = _run([*args, "--json-bare"], lambda: build_production(platform="darwin"))
     assert code == 2
     error = _obj(_obj(json.loads(out))["error"])
     assert error["type"] == "UnsupportedPlatformError"
     assert "Windows or Linux" in str(error["message"])
+    assert "darwin" in str(error["message"])

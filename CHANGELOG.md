@@ -24,8 +24,9 @@ the [Keep a Changelog](https://keepachangelog.com/) format.
 
 - Schema version 3. Compare marks fields only a schema 3 reading has as `newer-probe-only`
   against an older baseline.
-- `collect` and `check` refuse with exit 2 only on an OS that is neither Windows nor Linux
-  (macOS).
+- `collect` and `check` refuse with exit 2 only on an OS that is neither Windows nor Linux.
+- CI tests on Windows and Linux only; macOS is no longer tested. The package classifiers name
+  Windows and Linux instead of "OS Independent".
 
 ## [0.1.0] - 2026-11-27
 

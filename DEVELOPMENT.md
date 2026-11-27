@@ -78,7 +78,7 @@ These tests are skipped by `make test` and in CI, and run with `make testintegra
 The GitHub Actions workflows under `.github/workflows/` are distributed from the
 `default_cicd_public` template; change them there, not in this repository.
 
-- `default_cicd_public.yml` -- lint, type-check and test on Linux, macOS and Windows for every
+- `default_cicd_public.yml` -- lint, type-check and test on Linux and Windows for every
   Python version listed in the `pyproject.toml` classifiers, verify the pipx and uv installs and
   run the notebooks.
 - `default_release_public.yml` -- on a `v*` tag, builds the artifacts and publishes them to
